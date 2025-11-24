@@ -12,6 +12,7 @@ const App: React.FC = () => {
   const [activeView, setActiveView] = useState<ViewState>('dashboard');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const handleSelectProject = (id: string) => {
     setSelectedProjectId(id);
@@ -38,10 +39,12 @@ const App: React.FC = () => {
         onChangeView={(view) => {
           setActiveView(view);
           setSelectedProjectId(null);
-        }} 
+        }}
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
       />
       
-      <main className="flex-1 overflow-auto flex flex-col relative">
+      <main className="flex-1 overflow-auto flex flex-col relative transition-all duration-300">
         {activeView === 'dashboard' && <Dashboard projects={projects} />}
         
         {activeView === 'project-list' && (
