@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Project } from '../types';
-import { Plus, ChevronRight, BarChart2, X, Loader2 } from 'lucide-react';
+import { Plus, ChevronRight, BarChart2, X, Loader2, Info } from 'lucide-react';
 
 interface ProjectListProps {
   projects: Project[];
@@ -8,13 +8,23 @@ interface ProjectListProps {
   onAddProject: (project: Project) => Promise<boolean>;
 }
 
+// Definição dos tipos de projetos e seus exemplos (Conforme solicitado)
+const PROJECT_TYPES_INFO: Record<string, string> = {
+  "Automação / Digitalização": "IoT, RPA, MES/WMS, AGVs, sensores, dashboards em tempo real.",
+  "Segurança & Ergonomia": "Projetos de layout seguro, caminhos segregados, ergonomia de postos, LOTO, análises de risco (APR/FTA).",
+  "Fluxo de Informações & Padronização": "SOPs, 5W2H, gestão à vista, kamishibai, auditorias 5S/TPM.",
+  "Engajamento & Cultura": "Kaizen Day, círculos de qualidade, sugestão de melhorias, programa 6S.",
+  "Qualidade & Redução de Defeitos": "Redução de refugo/scrap, Poka-yoke, CEP, redução de reclamações de cliente.",
+  "Redução de Custos / Saving": "Otimização de consumo de materiais, eficiência energética, redução de tempo de ciclo."
+};
+
 export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProject, onAddProject }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     title: '',
-    type: 'Projeto Melhoria (DMAIC)',
+    type: 'Automação / Digitalização', // Valor padrão atualizado
     startDate: new Date().toISOString().split('T')[0],
     justification: '',
     objective: '',
@@ -33,7 +43,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
       justification: formData.justification,
       objective: formData.objective,
       benefits: formData.benefits,
-      description: formData.objective, // Usando objetivo como descrição curta
+      description: formData.objective, // Fallback
       responsibleLead: 'Rafael', // Padrão
       progress: 0,
       status: 'Ativo',
@@ -46,10 +56,9 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
     setIsSubmitting(false);
 
     if (success) {
-      // Reset e fecha modal apenas se deu certo
       setFormData({
         title: '',
-        type: 'Projeto Melhoria (DMAIC)',
+        type: 'Automação / Digitalização',
         startDate: new Date().toISOString().split('T')[0],
         justification: '',
         objective: '',
@@ -104,14 +113,13 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                 {project.title}
               </h3>
               
-              {/* Exibindo Tipo e Objetivo resumido */}
               <div className="mb-3">
-                 <span className="text-xs font-medium text-brand-600 bg-brand-50 px-2 py-1 rounded">
-                   {project.type || 'Projeto Geral'}
+                 <span className="text-xs font-medium text-brand-600 bg-brand-50 px-2 py-1 rounded border border-brand-100">
+                   {project.type || 'Geral'}
                  </span>
               </div>
 
-              <p className="text-sm text-slate-500 line-clamp-2 mb-4">
+              <p className="text-sm text-slate-500 line-clamp-3 mb-4">
                 {project.objective || project.description}
               </p>
               
@@ -199,13 +207,17 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                     className={inputClass}
                     disabled={isSubmitting}
                   >
-                    <option value="Projeto Melhoria (DMAIC)">Projeto Melhoria (DMAIC)</option>
-                    <option value="Projeto Rápido (PDCA)">Projeto Rápido (PDCA)</option>
-                    <option value="Kaizen Event">Kaizen Event</option>
-                    <option value="Padronização">Padronização</option>
-                    <option value="Implantação de Sistema">Implantação de Sistema</option>
-                    <option value="Outro">Outro</option>
+                    {Object.keys(PROJECT_TYPES_INFO).map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
                   </select>
+                  {/* Exemplos dinâmicos baseados na seleção */}
+                  <div className="mt-2 p-3 bg-brand-50 border border-brand-100 rounded-md text-xs text-brand-800 flex gap-2">
+                    <Info size={14} className="shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Exemplos:</strong> {PROJECT_TYPES_INFO[formData.type]}
+                    </span>
+                  </div>
                 </div>
 
                 {/* 3. Data de Início */}
@@ -226,7 +238,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
               {/* 4. Justificativa */}
               <div>
                 <label htmlFor="justification" className={labelClass}>
-                  Justificativa
+                  Justificativa (Problema)
                   <span className="block text-xs font-normal text-slate-500 mt-0.5">Qual o problema que temos hoje que foi necessário abrir um projeto?</span>
                 </label>
                 <textarea 
@@ -244,7 +256,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
               {/* 5. Objetivo */}
               <div>
                 <label htmlFor="objective" className={labelClass}>
-                  Objetivo
+                  Objetivo (Solução)
                   <span className="block text-xs font-normal text-slate-500 mt-0.5">O que vamos fazer para eliminar ou mitigar o problema?</span>
                 </label>
                 <textarea 
