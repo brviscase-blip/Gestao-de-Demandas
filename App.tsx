@@ -30,6 +30,13 @@ const App: React.FC = () => {
     );
   };
 
+  const handleAddProject = (newProject: Project) => {
+    // Aqui futuramente você fará o POST para o Webhook do N8N
+    // fetch('SEU_WEBHOOK_N8N', { method: 'POST', body: JSON.stringify(newProject) ... })
+    
+    setProjects(prev => [...prev, newProject]);
+  };
+
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
   return (
@@ -51,6 +58,7 @@ const App: React.FC = () => {
           <ProjectList 
             projects={projects} 
             onSelectProject={handleSelectProject} 
+            onAddProject={handleAddProject}
           />
         )}
         

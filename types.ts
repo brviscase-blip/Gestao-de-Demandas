@@ -31,7 +31,11 @@ export interface RecurrentDemand {
 export interface Project {
   id: string;
   title: string;
-  description: string;
+  type: string; // Novo campo: Tipo do Projeto
+  description: string; // Mantido para compatibilidade (será preenchido com o Objetivo)
+  justification?: string; // Novo campo: Justificativa
+  objective?: string; // Novo campo: Objetivo
+  benefits?: string; // Novo campo: Benefícios
   progress: number; // 0-100
   status: 'Ativo' | 'Em Espera' | 'Concluído';
   activities: Activity[];
