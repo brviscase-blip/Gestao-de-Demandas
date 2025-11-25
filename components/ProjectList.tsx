@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { Project } from '../types';
-import { Plus, ChevronRight, BarChart2, X, AlertCircle } from 'lucide-react';
+import { Plus, ChevronRight, BarChart2, X, Loader2 } from 'lucide-react';
 
 interface ProjectListProps {
   projects: Project[];
   onSelectProject: (id: string) => void;
-  onAddProject: (project: Project) => void;
+  onAddProject: (project: Project) => Promise<boolean>;
 }
 
 export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProject, onAddProject }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const [formData, setFormData] = useState({
     title: '',
     type: 'Projeto Melhoria (DMAIC)',
@@ -19,8 +21,9 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
     benefits: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
     const newProject: Project = {
       id: crypto.randomUUID(),
@@ -38,18 +41,22 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
       recurrentDemands: []
     };
 
-    onAddProject(newProject);
+    const success = await onAddProject(newProject);
     
-    // Reset e fecha modal
-    setFormData({
-      title: '',
-      type: 'Projeto Melhoria (DMAIC)',
-      startDate: new Date().toISOString().split('T')[0],
-      justification: '',
-      objective: '',
-      benefits: ''
-    });
-    setIsModalOpen(false);
+    setIsSubmitting(false);
+
+    if (success) {
+      // Reset e fecha modal apenas se deu certo
+      setFormData({
+        title: '',
+        type: 'Projeto Melhoria (DMAIC)',
+        startDate: new Date().toISOString().split('T')[0],
+        justification: '',
+        objective: '',
+        benefits: ''
+      });
+      setIsModalOpen(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -156,6 +163,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
               <button 
                 onClick={() => setIsModalOpen(false)}
                 className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+                disabled={isSubmitting}
               >
                 <X size={24} />
               </button>
@@ -175,6 +183,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                   onChange={handleChange}
                   placeholder="Ex: Otimização de Expedição 4.0"
                   className={inputClass}
+                  disabled={isSubmitting}
                 />
               </div>
 
@@ -188,6 +197,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                     value={formData.type}
                     onChange={handleChange}
                     className={inputClass}
+                    disabled={isSubmitting}
                   >
                     <option value="Projeto Melhoria (DMAIC)">Projeto Melhoria (DMAIC)</option>
                     <option value="Projeto Rápido (PDCA)">Projeto Rápido (PDCA)</option>
@@ -208,6 +218,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                     value={formData.startDate}
                     onChange={handleChange}
                     className={inputClass}
+                    disabled={isSubmitting}
                   />
                 </div>
               </div>
@@ -226,6 +237,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                   onChange={handleChange}
                   placeholder="Descreva o cenário atual e a dor principal..."
                   className={inputClass}
+                  disabled={isSubmitting}
                 />
               </div>
 
@@ -243,6 +255,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                   onChange={handleChange}
                   placeholder="Descreva a meta e a solução proposta..."
                   className={inputClass}
+                  disabled={isSubmitting}
                 />
               </div>
 
@@ -260,6 +273,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                   onChange={handleChange}
                   placeholder="Ex: Redução de 20% no tempo de espera, Aumento de produtividade..."
                   className={inputClass}
+                  disabled={isSubmitting}
                 />
               </div>
 
@@ -268,14 +282,23 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                   type="button" 
                   onClick={() => setIsModalOpen(false)}
                   className="px-6 py-2.5 text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg font-medium transition-colors"
+                  disabled={isSubmitting}
                 >
                   Cancelar
                 </button>
                 <button 
                   type="submit" 
-                  className="px-6 py-2.5 text-white bg-brand-600 hover:bg-brand-700 rounded-lg font-medium transition-colors shadow-lg shadow-brand-200"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 text-white bg-brand-600 hover:bg-brand-700 rounded-lg font-medium transition-colors shadow-lg shadow-brand-200 flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  Criar Projeto
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={20} className="mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    'Criar Projeto'
+                  )}
                 </button>
               </div>
             </form>

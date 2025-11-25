@@ -1,5 +1,12 @@
 import { Project, TaskStatus } from './types';
 
+// ==========================================
+// CONFIGURAÇÃO DE INTEGRAÇÃO (N8N)
+// ==========================================
+// Cole aqui a URL do seu Webhook do n8n (Método POST)
+// Exemplo: 'https://seu-n8n.com/webhook/criar-projeto'
+export const N8N_WEBHOOK_URL = ''; 
+
 export const MONTHS = [
   'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 
   'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
