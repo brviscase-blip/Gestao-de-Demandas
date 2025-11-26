@@ -15,7 +15,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
   const [formData, setFormData] = useState({
     title: '',
     responsibleLead: '',
-    type: 'Projeto Melhoria (DMAIC)',
+    type: 'Automação / Digitalização',
     startDate: new Date().toISOString().split('T')[0],
     justification: '',
     objective: '',
@@ -51,7 +51,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
       setFormData({
         title: '',
         responsibleLead: '',
-        type: 'Projeto Melhoria (DMAIC)',
+        type: 'Automação / Digitalização',
         startDate: new Date().toISOString().split('T')[0],
         justification: '',
         objective: '',
@@ -66,8 +66,9 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const inputClass = "w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all shadow-sm text-sm";
-  const labelClass = "block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wide";
+  // Estilos atualizados para maior conforto visual
+  const inputClass = "w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all shadow-sm text-sm";
+  const labelClass = "block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide";
 
   return (
     <div className="p-8 max-w-7xl mx-auto relative">
@@ -108,7 +109,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
               
               {/* Exibindo Tipo e Objetivo resumido */}
               <div className="mb-3 flex flex-wrap gap-2">
-                 <span className="text-xs font-medium text-brand-600 bg-brand-50 px-2 py-1 rounded border border-brand-100">
+                 <span className="text-xs font-medium text-brand-600 bg-brand-50 px-2 py-1 rounded border border-brand-100 truncate max-w-full">
                    {project.type || 'Projeto Geral'}
                  </span>
                  <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200">
@@ -159,42 +160,64 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
       {/* MODAL DE CRIAÇÃO */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl my-8">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          {/* Aumentei para max-w-5xl para dar mais espaço */}
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl my-8">
+            <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
               <div>
-                <h2 className="text-xl font-bold text-slate-800">Novo Projeto</h2>
-                <p className="text-xs text-slate-500">Preencha os detalhes para iniciar um novo projeto.</p>
+                <h2 className="text-2xl font-bold text-slate-800">Novo Projeto</h2>
+                <p className="text-sm text-slate-500 mt-1">Preencha os detalhes estratégicos para iniciar.</p>
               </div>
               <button 
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
                 disabled={isSubmitting}
               >
-                <X size={20} />
+                <X size={24} />
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            <form onSubmit={handleSubmit} className="p-8 space-y-8">
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* 1. Nome do Projeto (Ocupa 2/3) */}
-                <div className="md:col-span-2">
-                  <label htmlFor="title" className={labelClass}>Nome do Projeto <span className="text-red-500">*</span></label>
-                  <input 
-                    type="text" 
-                    id="title"
-                    name="title"
-                    required
-                    value={formData.title}
+              {/* BLOCO 1: Título do Projeto (Full Width) */}
+              <div>
+                <label htmlFor="title" className={labelClass}>Nome do Projeto <span className="text-brand-600">*</span></label>
+                <input 
+                  type="text" 
+                  id="title"
+                  name="title"
+                  required
+                  value={formData.title}
+                  onChange={handleChange}
+                  placeholder="Ex: Otimização de Expedição 4.0"
+                  className={`${inputClass} text-lg font-semibold`}
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              {/* BLOCO 2: Linha de 3 colunas (Tipo | Responsável | Data) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Tipo do Projeto */}
+                <div className="md:col-span-1">
+                  <label htmlFor="type" className={labelClass}>Tipo do Projeto</label>
+                  <select 
+                    id="type"
+                    name="type"
+                    value={formData.type}
                     onChange={handleChange}
-                    placeholder="Ex: Otimização de Expedição 4.0"
                     className={inputClass}
                     disabled={isSubmitting}
-                  />
+                  >
+                    <option value="Automação / Digitalização">Automação / Digitalização</option>
+                    <option value="Segurança & Ergonomia">Segurança & Ergonomia</option>
+                    <option value="Fluxo de Informações & Padronização">Fluxo de Informações & Padronização</option>
+                    <option value="Engajamento & Cultura">Engajamento & Cultura</option>
+                    <option value="Redução de Variabilidade (Six Sigma)">Redução de Variabilidade (Six Sigma)</option>
+                    <option value="Outro">Outro</option>
+                  </select>
                 </div>
 
-                {/* 2. Responsável (Ocupa 1/3) */}
-                <div>
+                {/* Responsável */}
+                <div className="md:col-span-1">
                   <label htmlFor="responsibleLead" className={labelClass}>Responsável Principal</label>
                   <input 
                     type="text" 
@@ -207,31 +230,9 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                     disabled={isSubmitting}
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 3. Tipo do Projeto */}
-                <div>
-                  <label htmlFor="type" className={labelClass}>Tipo do Projeto</label>
-                  <select 
-                    id="type"
-                    name="type"
-                    value={formData.type}
-                    onChange={handleChange}
-                    className={inputClass}
-                    disabled={isSubmitting}
-                  >
-                    <option value="Projeto Melhoria (DMAIC)">Projeto Melhoria (DMAIC)</option>
-                    <option value="Projeto Rápido (PDCA)">Projeto Rápido (PDCA)</option>
-                    <option value="Kaizen Event">Kaizen Event</option>
-                    <option value="Padronização">Padronização</option>
-                    <option value="Implantação de Sistema">Implantação de Sistema</option>
-                    <option value="Outro">Outro</option>
-                  </select>
-                </div>
-
-                {/* 4. Data de Início */}
-                <div>
+                {/* Data de Início */}
+                <div className="md:col-span-1">
                   <label htmlFor="startDate" className={labelClass}>Data de Início</label>
                   <input 
                     type="date" 
@@ -245,64 +246,72 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 5. Justificativa */}
-                <div>
-                  <label htmlFor="justification" className={labelClass}>
-                    Justificativa (Problema)
-                  </label>
-                  <textarea 
-                    id="justification"
-                    name="justification"
-                    rows={3}
-                    value={formData.justification}
-                    onChange={handleChange}
-                    placeholder="Qual o problema atual?"
-                    className={`${inputClass} resize-none`}
-                    disabled={isSubmitting}
-                  />
-                </div>
+              {/* SEPARADOR VISUAL */}
+              <div className="border-t border-slate-100 pt-6">
+                <h3 className="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2">
+                  <div className="w-1 h-4 bg-brand-500 rounded-full"></div>
+                  Detalhamento Estratégico
+                </h3>
 
-                {/* 6. Objetivo */}
-                <div>
-                  <label htmlFor="objective" className={labelClass}>
-                    Objetivo (Solução)
-                  </label>
-                  <textarea 
-                    id="objective"
-                    name="objective"
-                    rows={3}
-                    value={formData.objective}
-                    onChange={handleChange}
-                    placeholder="O que será feito?"
-                    className={`${inputClass} resize-none`}
-                    disabled={isSubmitting}
-                  />
+                <div className="grid gap-6">
+                  {/* Justificativa */}
+                  <div>
+                    <label htmlFor="justification" className={labelClass}>
+                      Justificativa (Qual o problema atual?)
+                    </label>
+                    <textarea 
+                      id="justification"
+                      name="justification"
+                      rows={3}
+                      value={formData.justification}
+                      onChange={handleChange}
+                      placeholder="Descreva o problema ou dor atual que motivou este projeto..."
+                      className={`${inputClass} resize-none`}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+
+                  {/* Objetivo */}
+                  <div>
+                    <label htmlFor="objective" className={labelClass}>
+                      Objetivo (Qual a solução proposta?)
+                    </label>
+                    <textarea 
+                      id="objective"
+                      name="objective"
+                      rows={3}
+                      value={formData.objective}
+                      onChange={handleChange}
+                      placeholder="O que será feito para mitigar ou eliminar o problema?"
+                      className={`${inputClass} resize-none`}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+
+                  {/* Benefícios */}
+                  <div>
+                    <label htmlFor="benefits" className={labelClass}>
+                      Benefícios Esperados (Ganhos quantitativos/qualitativos)
+                    </label>
+                    <textarea 
+                      id="benefits"
+                      name="benefits"
+                      rows={3}
+                      value={formData.benefits}
+                      onChange={handleChange}
+                      placeholder="Quais os ganhos esperados com a implementação?"
+                      className={`${inputClass} resize-none`}
+                      disabled={isSubmitting}
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* 7. Benefícios (Largura Total) */}
-              <div>
-                <label htmlFor="benefits" className={labelClass}>
-                  Benefícios Esperados
-                </label>
-                <textarea 
-                  id="benefits"
-                  name="benefits"
-                  rows={2}
-                  value={formData.benefits}
-                  onChange={handleChange}
-                  placeholder="Quais os ganhos esperados?"
-                  className={`${inputClass} resize-none`}
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 mt-2">
+              <div className="pt-6 flex items-center justify-end gap-3 border-t border-slate-100">
                 <button 
                   type="button" 
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-sm text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg font-medium transition-colors"
+                  className="px-6 py-3 text-sm text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg font-medium transition-colors"
                   disabled={isSubmitting}
                 >
                   Cancelar
@@ -310,11 +319,11 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                 <button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg font-medium transition-colors shadow-lg shadow-brand-200 flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="px-6 py-3 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg font-medium transition-colors shadow-lg shadow-brand-200 flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 size={16} className="mr-2 animate-spin" />
+                      <Loader2 size={18} className="mr-2 animate-spin" />
                       Salvando...
                     </>
                   ) : (
