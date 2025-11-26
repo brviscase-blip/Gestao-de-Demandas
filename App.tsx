@@ -103,20 +103,26 @@ const App: React.FC = () => {
     try {
       // 1. Tenta enviar para o N8N se a URL estiver configurada
       // O N8N cuidará de inserir no Supabase
+      // Envia ACTION: 'create'
       if (N8N_WEBHOOK_URL) {
+        const payload = {
+          action: 'create',
+          ...newProject
+        };
+
         const response = await fetch(N8N_WEBHOOK_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(newProject),
+          body: JSON.stringify(payload),
         });
 
         if (!response.ok) {
           throw new Error(`Erro na integração N8N: ${response.statusText}`);
         }
         
-        console.log("Projeto enviado com sucesso para o N8N!");
+        console.log("Projeto enviado com sucesso para o N8N (Create)!");
       } else {
         console.warn("URL do Webhook N8N não configurada em constants.ts.");
       }
@@ -129,6 +135,42 @@ const App: React.FC = () => {
       console.error("Erro ao salvar projeto:", error);
       alert("Houve um erro ao tentar salvar o projeto no servidor. Verifique o console.");
       return false;
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    // 1. Atualização Otimista (Remove da tela imediatamente)
+    const previousProjects = [...projects];
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+
+    try {
+      if (N8N_WEBHOOK_URL) {
+        // Envia ACTION: 'delete'
+        const payload = {
+          action: 'delete',
+          id: projectId
+        };
+
+        console.log("Enviando solicitação de exclusão para N8N:", payload);
+
+        const response = await fetch(N8N_WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erro ao excluir no N8N: ${response.statusText}`);
+        }
+        console.log("Solicitação de exclusão enviada com sucesso!");
+      }
+    } catch (error) {
+      console.error("Erro ao excluir projeto:", error);
+      alert("Erro ao excluir o projeto no servidor. A ação será desfeita localmente.");
+      // Reverte a exclusão visual se der erro
+      setProjects(previousProjects);
     }
   };
 
@@ -166,6 +208,7 @@ const App: React.FC = () => {
             projects={projects} 
             onSelectProject={handleSelectProject} 
             onAddProject={handleAddProject}
+            onDeleteProject={handleDeleteProject}
           />
         )}
         

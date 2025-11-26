@@ -1,14 +1,16 @@
+
 import React, { useState } from 'react';
 import { Project } from '../types';
-import { Plus, ChevronRight, BarChart2, X, Loader2 } from 'lucide-react';
+import { Plus, ChevronRight, BarChart2, X, Loader2, Trash2 } from 'lucide-react';
 
 interface ProjectListProps {
   projects: Project[];
   onSelectProject: (id: string) => void;
   onAddProject: (project: Project) => Promise<boolean>;
+  onDeleteProject: (id: string) => void;
 }
 
-export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProject, onAddProject }) => {
+export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProject, onAddProject, onDeleteProject }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -66,6 +68,13 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleDeleteClick = (e: React.MouseEvent, projectId: string) => {
+    e.stopPropagation(); // Impede que o clique abra o projeto
+    if (window.confirm('Tem certeza que deseja excluir este projeto? Esta ação não pode ser desfeita.')) {
+      onDeleteProject(projectId);
+    }
+  };
+
   // Estilos atualizados para maior conforto visual
   const inputClass = "w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all shadow-sm text-sm";
   const labelClass = "block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide";
@@ -91,10 +100,19 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
           <div 
             key={project.id} 
             onClick={() => onSelectProject(project.id)}
-            className="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-brand-200 transition-all cursor-pointer overflow-hidden flex flex-col h-full"
+            className="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-brand-200 transition-all cursor-pointer overflow-hidden flex flex-col h-full relative"
           >
+             {/* Botão de Excluir */}
+             <button
+              onClick={(e) => handleDeleteClick(e, project.id)}
+              className="absolute top-4 right-4 z-10 p-1.5 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+              title="Excluir projeto"
+            >
+              <Trash2 size={16} />
+            </button>
+
             <div className="p-6 flex-1">
-              <div className="flex justify-between items-start mb-4">
+              <div className="flex justify-between items-start mb-4 pr-6">
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                   project.status === 'Ativo' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                 }`}>
@@ -103,7 +121,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                 <span className="text-xs text-slate-400">Início: {new Date(project.startDate).toLocaleDateString('pt-BR')}</span>
               </div>
               
-              <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-brand-600 transition-colors">
+              <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-brand-600 transition-colors pr-2">
                 {project.title}
               </h3>
               
