@@ -70,6 +70,15 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
   const inputClass = "w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all shadow-sm text-sm";
   const labelClass = "block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide";
 
+  const projectTypeDescriptions: { [key: string]: string } = {
+    'Automação / Digitalização': 'Foco principal: Reduzir tarefas manuais e repetitivas, usando tecnologia para otimizar processos.',
+    'Segurança & Ergonomia': 'Foco principal: Aumentar a segurança do trabalho e o conforto, prevenindo acidentes e lesões.',
+    'Fluxo de Informações & Padronização': 'Foco principal: Melhorar a comunicação, organizar processos e garantir consistência nas operações.',
+    'Engajamento & Cultura': 'Foco principal: Fortalecer o trabalho em equipe, o clima organizacional e a motivação dos colaboradores.',
+    'Redução de Variabilidade (Six Sigma)': 'Foco principal: Diminuir defeitos e inconsistências nos processos, buscando a máxima qualidade (metodologia Six Sigma).',
+    'Outro': 'Foco principal: Projetos com objetivos diferentes das categorias acima, que podem ser detalhados na justificativa.'
+  };
+
   return (
     <div className="p-8 max-w-7xl mx-auto relative">
       <div className="flex items-center justify-between mb-8">
@@ -160,8 +169,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
       {/* MODAL DE CRIAÇÃO */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
-          {/* Aumentei para max-w-5xl para dar mais espaço */}
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl my-8">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl my-8">
             <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800">Novo Projeto</h2>
@@ -214,6 +222,11 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                     <option value="Redução de Variabilidade (Six Sigma)">Redução de Variabilidade (Six Sigma)</option>
                     <option value="Outro">Outro</option>
                   </select>
+                  {formData.type && (
+                    <p className="text-xs text-slate-500 mt-2 bg-slate-50 p-2 rounded-md border border-slate-200">
+                      {projectTypeDescriptions[formData.type]}
+                    </p>
+                  )}
                 </div>
 
                 {/* Responsável */}
@@ -253,9 +266,9 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                   Detalhamento Estratégico
                 </h3>
 
-                <div className="grid gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Justificativa */}
-                  <div>
+                  <div className="md:col-span-2">
                     <label htmlFor="justification" className={labelClass}>
                       Justificativa (Qual o problema atual?)
                     </label>
@@ -272,7 +285,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                   </div>
 
                   {/* Objetivo */}
-                  <div>
+                  <div className="md:col-span-1">
                     <label htmlFor="objective" className={labelClass}>
                       Objetivo (Qual a solução proposta?)
                     </label>
@@ -289,7 +302,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                   </div>
 
                   {/* Benefícios */}
-                  <div>
+                  <div className="md:col-span-1">
                     <label htmlFor="benefits" className={labelClass}>
                       Benefícios Esperados (Ganhos quantitativos/qualitativos)
                     </label>
