@@ -99,10 +99,15 @@ const App: React.FC = () => {
     setActiveView('project-list');
   };
 
-  const handleUpdateProject = (updatedProject: Project) => {
+  const handleUpdateProject = async (updatedProject: Project) => {
+    // 1. Otimistic Update (UI)
     setProjects(prevProjects => 
       prevProjects.map(p => p.id === updatedProject.id ? updatedProject : p)
     );
+
+    // 2. Sync to Backend (N8N)
+    // Chamamos a função de edição que já possui a lógica de enviar para o Webhook
+    await handleEditProject(updatedProject);
   };
 
   const handleAddProject = async (newProject: Project): Promise<boolean> => {
@@ -139,6 +144,7 @@ const App: React.FC = () => {
 
   const handleEditProject = async (updatedProject: Project): Promise<boolean> => {
     try {
+      // Se chamado diretamente (não via handleUpdateProject), atualiza estado local também
       setProjects(prevProjects => 
         prevProjects.map(p => p.id === updatedProject.id ? updatedProject : p)
       );
@@ -163,7 +169,8 @@ const App: React.FC = () => {
       return true;
     } catch (error) {
       console.error("Erro ao editar projeto:", error);
-      alert("Houve um erro ao tentar editar o projeto no servidor.");
+      // Não alertamos aqui se for uma atualização em background, 
+      // mas como é chamado por botões explícitos, o alert é aceitável.
       return false;
     }
   };
