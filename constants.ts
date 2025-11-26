@@ -12,20 +12,21 @@ export const MONTHS = [
   'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
 ];
 
-// Monday.com inspired colors (Solid & Vibrant)
+// Colors updated to specific Hex codes requested
 export const STATUS_COLORS: Record<TaskStatus, string> = {
-  'Não Iniciado': 'bg-[#94a3b8] text-white hover:bg-slate-500', // Updated to specific grey #94a3b8
-  'Em Andamento': 'bg-blue-500 text-white hover:bg-blue-600',       // Blue (or Orange like Monday's 'Working on it' #FDAB3D)
-  'Concluído': 'bg-emerald-500 text-white hover:bg-emerald-600',     // Green
-  'Bloqueado': 'bg-red-500 text-white hover:bg-red-600',             // Red
+  'Não Iniciado': 'bg-[#171d25] text-white hover:opacity-90',  // Dark
+  'Em Andamento': 'bg-[#0a53a8] text-white hover:opacity-90',  // Blue
+  'Concluído': 'bg-[#11734b] text-white hover:opacity-90',     // Green
+  'Bloqueado': 'bg-[#ea4335] text-white hover:opacity-90',     // Red
 };
 
 export const DMAIC_COLORS: Record<string, string> = {
-  'D - Definir': 'bg-purple-500 text-white hover:bg-purple-600',
-  'M - Mensurar': 'bg-indigo-500 text-white hover:bg-indigo-600',
-  'A - Analisar': 'bg-cyan-500 text-white hover:bg-cyan-600',
-  'I - Implementar': 'bg-orange-500 text-white hover:bg-orange-600',
-  'C - Controlar': 'bg-teal-500 text-white hover:bg-teal-600',
+  'D - Definir': 'bg-[#ea4335] text-white hover:opacity-90',      // Red
+  'M - Mensurar': 'bg-[#ffde00] text-slate-900 hover:opacity-90', // Yellow (Dark text for contrast)
+  'A - Analisar': 'bg-[#011f5e] text-white hover:opacity-90',     // Deep Blue
+  'I - Implementar': 'bg-[#0a53a8] text-white hover:opacity-90',  // Blue
+  'C - Controlar': 'bg-[#171d25] text-white hover:opacity-90',    // Dark
+  'Implementado': 'bg-[#11734b] text-white hover:opacity-90',     // Green
 };
 
 // Array vazio para iniciar a aplicação sem dados locais.
