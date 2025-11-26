@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Project } from '../types';
-import { Plus, ChevronRight, BarChart2, X, Loader2, Trash2, Pencil, AlertTriangle, ChevronDown, FolderPlus, FolderKanban } from 'lucide-react';
+import { Plus, ChevronRight, BarChart2, X, Loader2, Trash2, Pencil, AlertTriangle, ChevronDown, FolderPlus, Calendar } from 'lucide-react';
 
 interface ProjectListProps {
   projects: Project[];
@@ -199,72 +199,87 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
               onClick={() => onSelectProject(project.id)}
               className="group bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-brand-200 dark:hover:border-brand-700 transition-all cursor-pointer overflow-hidden flex flex-col h-full relative"
             >
-               {/* Ações (Editar / Excluir) */}
-               <div className="absolute top-4 right-4 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                 <button
-                    onClick={(e) => handleOpenEditModal(e, project)}
-                    className="p-1.5 bg-white/80 dark:bg-slate-700/80 backdrop-blur-sm text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/50 border border-slate-200 dark:border-slate-600 rounded-lg transition-colors shadow-sm"
-                    title="Editar projeto"
-                  >
-                    <Pencil size={16} />
-                  </button>
-                  <button
-                    onClick={(e) => handleDeleteClick(e, project.id)}
-                    className="p-1.5 bg-white/80 dark:bg-slate-700/80 backdrop-blur-sm text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/50 border border-slate-200 dark:border-slate-600 rounded-lg transition-colors shadow-sm"
-                    title="Excluir projeto"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-               </div>
-
-              <div className="p-6 flex-1">
-                <div className="flex justify-between items-start mb-4 pr-16">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    project.status === 'Ativo' ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300'
-                  }`}>
-                    {project.status}
-                  </span>
-                  <span className="text-xs text-slate-400">Início: {new Date(project.startDate).toLocaleDateString('pt-BR')}</span>
-                </div>
-                
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 group-hover:text-brand-600 transition-colors pr-2">
+              {/* BODY */}
+              <div className="p-5 flex-1 flex flex-col">
+                {/* Título */}
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-brand-600 transition-colors mb-2 pr-2 leading-tight">
                   {project.title}
                 </h3>
                 
-                {/* Exibindo Tipo e Objetivo resumido */}
-                <div className="mb-3 flex flex-wrap gap-2">
-                   <span className="text-xs font-medium text-brand-600 dark:text-brand-300 bg-brand-50 dark:bg-brand-900/30 px-2 py-1 rounded border border-brand-100 dark:border-brand-800 truncate max-w-full">
+                {/* Tags: Tipo e Responsável */}
+                <div className="mb-4 flex flex-wrap gap-2">
+                   <span className="text-[11px] font-bold uppercase tracking-wide text-brand-600 dark:text-brand-300 bg-brand-50 dark:bg-brand-900/30 px-2 py-1 rounded border border-sky-200 dark:border-sky-800 truncate max-w-full">
                      {project.type || 'Projeto Geral'}
                    </span>
-                   <span className="text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded border border-slate-200 dark:border-slate-600">
-                     Resp: {project.responsibleLead}
+                   <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/50 px-2 py-1 rounded border border-slate-200 dark:border-slate-600">
+                     {project.responsibleLead}
                    </span>
                 </div>
 
-                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4">
+                {/* Descrição */}
+                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-3 mb-5 flex-1 leading-relaxed">
                   {project.objective || project.description}
                 </p>
                 
+                {/* Progresso e Atividades */}
                 <div className="mt-auto">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-600 dark:text-slate-400 font-medium">Progresso</span>
-                    <span className="text-slate-900 dark:text-slate-200 font-bold">{project.progress}%</span>
+                  <div className="flex justify-between items-end mb-2">
+                     <div className="flex items-center text-xs text-slate-500 dark:text-slate-400 font-medium bg-slate-50 dark:bg-slate-700/50 px-2 py-1 rounded-md">
+                        <BarChart2 size={12} className="mr-1.5 text-slate-400" />
+                        {project.activities.length} Atividades
+                    </div>
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{project.progress}%</span>
                   </div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
+                  <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
                     <div 
-                      className="bg-brand-500 h-2 rounded-full transition-all duration-500" 
+                      className="bg-brand-500 h-1.5 rounded-full transition-all duration-500" 
                       style={{ width: `${project.progress}%` }}
                     ></div>
                   </div>
                 </div>
               </div>
 
-              <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                <div className="flex items-center text-xs text-slate-500 dark:text-slate-400">
-                  <BarChart2 size={14} className="mr-1" />
-                  {project.activities.length} Atividades
+              {/* FOOTER: Ações e Metadados */}
+              <div className="px-5 py-3 bg-slate-50/50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                
+                {/* Grupo Esquerda: Status + Ações */}
+                <div className="flex items-center gap-3">
+                  {/* Status Badge */}
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${
+                    project.status === 'Ativo' 
+                      ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30' 
+                      : 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-900/30'
+                  }`}>
+                    {project.status}
+                  </span>
+                  
+                  {/* Divisor Vertical */}
+                  <div className="h-4 w-px bg-slate-200 dark:bg-slate-700"></div>
+
+                  {/* Ações Always Visible */}
+                  <div className="flex items-center gap-1">
+                    <button
+                        onClick={(e) => handleDeleteClick(e, project.id)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-white dark:hover:bg-slate-700 rounded transition-all"
+                        title="Excluir"
+                      >
+                        <Trash2 size={14} />
+                    </button>
+                    <button
+                        onClick={(e) => handleOpenEditModal(e, project)}
+                        className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-white dark:hover:bg-slate-700 rounded transition-all"
+                        title="Editar"
+                      >
+                        <Pencil size={14} />
+                    </button>
+                  </div>
                 </div>
-                <ChevronRight size={16} className="text-slate-400 group-hover:text-brand-500 group-hover:translate-x-1 transition-all" />
+
+                {/* Grupo Direita: Data */}
+                <div className="text-[11px] font-medium text-slate-400 flex items-center gap-1.5" title="Data de Início">
+                   <Calendar size={12} />
+                   {new Date(project.startDate).toLocaleDateString('pt-BR')}
+                </div>
               </div>
             </div>
           ))}
