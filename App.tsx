@@ -26,39 +26,54 @@ const App: React.FC = () => {
   const fetchProjects = async () => {
     try {
       setIsLoading(true);
+      
+      console.log('Iniciando busca no Supabase...');
+
       // Seleciona todas as colunas da tabela 'gestão_de_demandas'
-      // Certifique-se que o nome da tabela está exato no Supabase
+      // Removida ordenação por 'created_at' para evitar erros se a coluna não existir
       const { data, error } = await supabase
         .from('gestão_de_demandas')
-        .select('*')
-        .order('created_at', { ascending: false }); // Ordena pelos mais recentes se tiver a coluna created_at
+        .select('*');
 
       if (error) {
-        console.error('Erro ao buscar projetos do Supabase:', error);
-        // Fallback: se der erro de conexão (ex: credenciais erradas), não quebra a app, inicia vazio
+        console.error('Erro detalhado do Supabase:', JSON.stringify(error, null, 2));
+        alert(`Erro ao conectar no banco: ${error.message}`);
         setProjects([]);
       } else if (data) {
-        // Mapeia do formato do Banco de Dados (Snake Case) para o Frontend (Camel Case)
-        const mappedProjects: Project[] = data.map((item: any) => ({
-          id: item.id || crypto.randomUUID(),
-          title: item.Nome_do_Projeto,
-          type: item.Tipo_do_Projeto,
-          startDate: item.Data_de_Inicio,
-          justification: item.Justificativa,
-          objective: item.Objetivo,
-          benefits: item.Beneficios_Esperados,
-          description: item.Objetivo, // Fallback
-          responsibleLead: item.Responsavel_Principal,
-          progress: 0, // O banco não parece ter progresso salvo ainda, inicia com 0
-          status: 'Ativo', // Default
-          activities: [], // O banco ainda não salva atividades complexas (necessário coluna JSONB)
-          recurrentDemands: [] // O banco ainda não salva demandas recorrentes
-        }));
+        console.log('Dados brutos recebidos do Supabase:', data);
+
+        // Mapeia do formato do Banco de Dados para o Frontend
+        // Usa fallback para lidar com variações de Maiúsculas/Minúsculas e Acentos
+        const mappedProjects: Project[] = data.map((item: any) => {
+          // Helper para pegar valor ignorando case/acentos se necessário, 
+          // mas priorizando os nomes exatos fornecidos
+          
+          return {
+            id: item.id || crypto.randomUUID(),
+            // Tenta variações comuns de nome de coluna
+            title: item.Nome_do_Projeto || item.nome_do_projeto || 'Sem Título',
+            type: item.Tipo_do_Projeto || item.tipo_do_projeto || 'Geral',
+            startDate: item.Data_de_Inicio || item.data_de_inicio || new Date().toISOString(),
+            justification: item.Justificativa || item.justificativa || '',
+            objective: item.Objetivo || item.objetivo || '',
+            benefits: item.Beneficios_Esperados || item.beneficios_esperados || '',
+            description: item.Objetivo || item.objetivo || '', 
+            
+            // Acesso seguro a propriedades com acentos
+            responsibleLead: item['Responsável_Principal'] || item['responsável_principal'] || item.Responsavel_Principal || 'Não atribuído',
+            
+            progress: 0, 
+            status: 'Ativo',
+            activities: [],
+            recurrentDemands: []
+          };
+        });
         
+        console.log('Projetos mapeados:', mappedProjects);
         setProjects(mappedProjects);
       }
     } catch (err) {
-      console.error('Erro inesperado:', err);
+      console.error('Erro inesperado na aplicação:', err);
     } finally {
       setIsLoading(false);
     }
