@@ -138,6 +138,46 @@ const App: React.FC = () => {
     }
   };
 
+  const handleEditProject = async (updatedProject: Project): Promise<boolean> => {
+    try {
+      // 1. Atualização Otimista
+      setProjects(prevProjects => 
+        prevProjects.map(p => p.id === updatedProject.id ? updatedProject : p)
+      );
+
+      // 2. Envia para o N8N com action: 'update'
+      if (N8N_WEBHOOK_URL) {
+        const payload = {
+          action: 'update',
+          ...updatedProject
+        };
+
+        console.log("Enviando solicitação de edição para N8N:", payload);
+
+        const response = await fetch(N8N_WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erro ao editar no N8N: ${response.statusText}`);
+        }
+        console.log("Projeto editado com sucesso via N8N!");
+      } else {
+        console.warn("URL do Webhook N8N não configurada.");
+      }
+      return true;
+    } catch (error) {
+      console.error("Erro ao editar projeto:", error);
+      alert("Houve um erro ao tentar editar o projeto no servidor.");
+      // O ideal seria reverter o estado aqui se falhar, mas para o MVP manteremos simples
+      return false;
+    }
+  };
+
   const handleDeleteProject = async (projectId: string) => {
     // 1. Atualização Otimista (Remove da tela imediatamente)
     const previousProjects = [...projects];
@@ -208,6 +248,7 @@ const App: React.FC = () => {
             projects={projects} 
             onSelectProject={handleSelectProject} 
             onAddProject={handleAddProject}
+            onEditProject={handleEditProject}
             onDeleteProject={handleDeleteProject}
           />
         )}

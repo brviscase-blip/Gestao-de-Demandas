@@ -1,19 +1,24 @@
 
 import React, { useState } from 'react';
 import { Project } from '../types';
-import { Plus, ChevronRight, BarChart2, X, Loader2, Trash2 } from 'lucide-react';
+import { Plus, ChevronRight, BarChart2, X, Loader2, Trash2, Pencil, AlertTriangle } from 'lucide-react';
 
 interface ProjectListProps {
   projects: Project[];
   onSelectProject: (id: string) => void;
   onAddProject: (project: Project) => Promise<boolean>;
+  onEditProject: (project: Project) => Promise<boolean>;
   onDeleteProject: (id: string) => void;
 }
 
-export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProject, onAddProject, onDeleteProject }) => {
+export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProject, onAddProject, onEditProject, onDeleteProject }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   
+  // State para o Modal de Exclusão
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     title: '',
     responsibleLead: '',
@@ -24,42 +29,82 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
     benefits: ''
   });
 
+  // Função para abrir modal em modo CRIAÇÃO
+  const handleOpenCreateModal = () => {
+    setEditingProject(null);
+    setFormData({
+      title: '',
+      responsibleLead: '',
+      type: 'Automação / Digitalização',
+      startDate: new Date().toISOString().split('T')[0],
+      justification: '',
+      objective: '',
+      benefits: ''
+    });
+    setIsModalOpen(true);
+  };
+
+  // Função para abrir modal em modo EDIÇÃO
+  const handleOpenEditModal = (e: React.MouseEvent, project: Project) => {
+    e.stopPropagation();
+    setEditingProject(project);
+    setFormData({
+      title: project.title,
+      responsibleLead: project.responsibleLead,
+      type: project.type,
+      startDate: project.startDate ? project.startDate.split('T')[0] : new Date().toISOString().split('T')[0],
+      justification: project.justification || '',
+      objective: project.objective || '',
+      benefits: project.benefits || ''
+    });
+    setIsModalOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    const newProject: Project = {
-      id: crypto.randomUUID(),
-      title: formData.title,
-      type: formData.type,
-      startDate: formData.startDate,
-      justification: formData.justification,
-      objective: formData.objective,
-      benefits: formData.benefits,
-      description: formData.objective, // Usando objetivo como descrição curta
-      responsibleLead: formData.responsibleLead || 'Não atribuído',
-      progress: 0,
-      status: 'Ativo',
-      activities: [],
-      recurrentDemands: []
-    };
+    let success = false;
 
-    const success = await onAddProject(newProject);
+    if (editingProject) {
+      // MODO EDIÇÃO
+      const updatedProject: Project = {
+        ...editingProject,
+        title: formData.title,
+        type: formData.type,
+        startDate: formData.startDate,
+        justification: formData.justification,
+        objective: formData.objective,
+        benefits: formData.benefits,
+        description: formData.objective,
+        responsibleLead: formData.responsibleLead || 'Não atribuído',
+      };
+      success = await onEditProject(updatedProject);
+    } else {
+      // MODO CRIAÇÃO
+      const newProject: Project = {
+        id: crypto.randomUUID(),
+        title: formData.title,
+        type: formData.type,
+        startDate: formData.startDate,
+        justification: formData.justification,
+        objective: formData.objective,
+        benefits: formData.benefits,
+        description: formData.objective, // Usando objetivo como descrição curta
+        responsibleLead: formData.responsibleLead || 'Não atribuído',
+        progress: 0,
+        status: 'Ativo',
+        activities: [],
+        recurrentDemands: []
+      };
+      success = await onAddProject(newProject);
+    }
     
     setIsSubmitting(false);
 
     if (success) {
-      // Reset e fecha modal apenas se deu certo
-      setFormData({
-        title: '',
-        responsibleLead: '',
-        type: 'Automação / Digitalização',
-        startDate: new Date().toISOString().split('T')[0],
-        justification: '',
-        objective: '',
-        benefits: ''
-      });
       setIsModalOpen(false);
+      setEditingProject(null);
     }
   };
 
@@ -70,8 +115,13 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
 
   const handleDeleteClick = (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation(); // Impede que o clique abra o projeto
-    if (window.confirm('Tem certeza que deseja excluir este projeto? Esta ação não pode ser desfeita.')) {
-      onDeleteProject(projectId);
+    setProjectToDelete(projectId);
+  };
+
+  const confirmDelete = () => {
+    if (projectToDelete) {
+      onDeleteProject(projectToDelete);
+      setProjectToDelete(null);
     }
   };
 
@@ -87,7 +137,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
           <p className="text-slate-500 mt-1">Gerencie seus projetos ativos e acompanhe o progresso.</p>
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenCreateModal}
           className="flex items-center px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors shadow-sm font-medium"
         >
           <Plus size={20} className="mr-2" />
@@ -102,17 +152,26 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
             onClick={() => onSelectProject(project.id)}
             className="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-brand-200 transition-all cursor-pointer overflow-hidden flex flex-col h-full relative"
           >
-             {/* Botão de Excluir */}
-             <button
-              onClick={(e) => handleDeleteClick(e, project.id)}
-              className="absolute top-4 right-4 z-10 p-1.5 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-              title="Excluir projeto"
-            >
-              <Trash2 size={16} />
-            </button>
+             {/* Ações (Editar / Excluir) */}
+             <div className="absolute top-4 right-4 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+               <button
+                  onClick={(e) => handleOpenEditModal(e, project)}
+                  className="p-1.5 bg-white/80 backdrop-blur-sm text-slate-400 hover:text-brand-600 hover:bg-brand-50 border border-slate-200 rounded-lg transition-colors shadow-sm"
+                  title="Editar projeto"
+                >
+                  <Pencil size={16} />
+                </button>
+                <button
+                  onClick={(e) => handleDeleteClick(e, project.id)}
+                  className="p-1.5 bg-white/80 backdrop-blur-sm text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 rounded-lg transition-colors shadow-sm"
+                  title="Excluir projeto"
+                >
+                  <Trash2 size={16} />
+                </button>
+             </div>
 
             <div className="p-6 flex-1">
-              <div className="flex justify-between items-start mb-4 pr-6">
+              <div className="flex justify-between items-start mb-4 pr-16">
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                   project.status === 'Ativo' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                 }`}>
@@ -165,7 +224,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
 
         {/* Add New Placeholder Card */}
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenCreateModal}
           className="border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center text-slate-400 hover:border-brand-400 hover:text-brand-500 hover:bg-brand-50 transition-all min-h-[250px]"
         >
           <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-4 group-hover:bg-white transition-colors">
@@ -175,15 +234,18 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
         </button>
       </div>
 
-      {/* MODAL DE CRIAÇÃO */}
+      {/* MODAL DE CRIAÇÃO / EDIÇÃO */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
-          {/* Aumentei para max-w-5xl para dar mais espaço */}
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl my-8">
             <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
               <div>
-                <h2 className="text-2xl font-bold text-slate-800">Novo Projeto</h2>
-                <p className="text-sm text-slate-500 mt-1">Preencha os detalhes estratégicos para iniciar.</p>
+                <h2 className="text-2xl font-bold text-slate-800">
+                  {editingProject ? 'Editar Projeto' : 'Novo Projeto'}
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  {editingProject ? 'Atualize as informações estratégicas do projeto.' : 'Preencha os detalhes estratégicos para iniciar.'}
+                </p>
               </div>
               <button 
                 onClick={() => setIsModalOpen(false)}
@@ -345,11 +407,40 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                       Salvando...
                     </>
                   ) : (
-                    'Criar Projeto'
+                    editingProject ? 'Salvar Alterações' : 'Criar Projeto'
                   )}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CUSTOMIZADO DE EXCLUSÃO */}
+      {projectToDelete && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+              <AlertTriangle size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Excluir Projeto?</h3>
+            <p className="text-slate-500 text-sm mb-6">
+              Esta ação não pode ser desfeita. O projeto será removido permanentemente do banco de dados.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => setProjectToDelete(null)}
+                className="px-5 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-5 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
+              >
+                Sim, excluir
+              </button>
+            </div>
           </div>
         </div>
       )}
