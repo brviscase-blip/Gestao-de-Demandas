@@ -19,15 +19,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onChangeView, isOp
   };
 
   return (
-    <div className={`flex flex-col h-screen bg-slate-900 border-r border-slate-800 shrink-0 sticky top-0 transition-all duration-300 relative ${isOpen ? 'w-64' : 'w-20'}`}>
+    <div className={`flex flex-col h-screen bg-slate-900 border-r border-slate-800 shrink-0 sticky top-0 transition-all duration-300 relative z-20 ${isOpen ? 'w-64' : 'w-20'}`}>
       
-      {/* Toggle Button - Positioned on the edge */}
+      {/* Toggle Button - Positioned on the edge with larger hit area */}
       <button 
         onClick={onToggle}
-        className="absolute -right-3 top-8 bg-slate-800 text-slate-400 hover:text-white border border-slate-700 p-1 rounded-full cursor-pointer z-50 shadow-md transition-colors"
+        className="absolute -right-4 top-8 w-8 h-8 flex items-center justify-center bg-slate-800 text-slate-400 hover:text-white border border-slate-700 rounded-full cursor-pointer z-50 shadow-md transition-colors"
         title={isOpen ? "Recolher menu" : "Expandir menu"}
       >
-        {isOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+        {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
       </button>
 
       {/* Header */}

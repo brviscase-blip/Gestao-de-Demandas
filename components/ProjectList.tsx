@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Project } from '../types';
-import { Plus, ChevronRight, BarChart2, X, Loader2, Trash2, Pencil, AlertTriangle, ChevronDown } from 'lucide-react';
+import { Plus, ChevronRight, BarChart2, X, Loader2, Trash2, Pencil, AlertTriangle, ChevronDown, FolderPlus, FolderKanban } from 'lucide-react';
 
 interface ProjectListProps {
   projects: Project[];
@@ -27,6 +27,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
     objective: '',
     benefits: ''
   });
+
+  const hasProjects = projects.length > 0;
 
   // Função para abrir modal em modo CRIAÇÃO
   const handleOpenCreateModal = () => {
@@ -129,109 +131,155 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
   const labelClass = "block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wide";
 
   return (
-    <div className="p-8 max-w-7xl mx-auto relative">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-8 max-w-7xl mx-auto relative h-full flex flex-col">
+      <div className="flex items-center justify-between mb-8 shrink-0 z-10 relative">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Meus Projetos</h1>
           <p className="text-slate-500 mt-1">Gerencie seus projetos ativos e acompanhe o progresso.</p>
         </div>
-        <button 
-          onClick={handleOpenCreateModal}
-          className="flex items-center px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors shadow-sm font-medium"
-        >
-          <Plus size={20} className="mr-2" />
-          Novo Projeto
-        </button>
+        
+        {/* Só mostra o botão superior se JÁ existirem projetos na tela */}
+        {hasProjects && (
+          <button 
+            onClick={handleOpenCreateModal}
+            className="flex items-center px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors shadow-sm font-medium"
+          >
+            <Plus size={20} className="mr-2" />
+            Novo Projeto
+          </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects.map((project) => (
-          <div 
-            key={project.id} 
-            onClick={() => onSelectProject(project.id)}
-            className="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-brand-200 transition-all cursor-pointer overflow-hidden flex flex-col h-full relative"
-          >
-             {/* Ações (Editar / Excluir) */}
-             <div className="absolute top-4 right-4 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-               <button
-                  onClick={(e) => handleOpenEditModal(e, project)}
-                  className="p-1.5 bg-white/80 backdrop-blur-sm text-slate-400 hover:text-brand-600 hover:bg-brand-50 border border-slate-200 rounded-lg transition-colors shadow-sm"
-                  title="Editar projeto"
+      {!hasProjects ? (
+        // === EMPTY STATE PREENCHIDO COM GHOST GRID ===
+        <div className="flex-1 relative">
+           
+           {/* Fundo com "Fantasmas" (Ghost Cards) para preencher o ambiente */}
+           <div className="absolute inset-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-30 pointer-events-none">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50 flex flex-col p-6">
+                    <div className="h-6 w-32 bg-slate-200 rounded mb-4"></div>
+                    <div className="h-4 w-full bg-slate-200 rounded mb-2"></div>
+                    <div className="h-4 w-2/3 bg-slate-200 rounded"></div>
+                    <div className="mt-auto h-2 w-full bg-slate-200 rounded-full"></div>
+                </div>
+              ))}
+           </div>
+
+           {/* Card Central de Ação (Overlay) */}
+           <div className="relative z-10 flex flex-col items-center justify-center h-full">
+             <div className="bg-white/90 backdrop-blur-md p-10 rounded-3xl border border-slate-200 shadow-xl text-center max-w-lg w-full transform transition-all hover:scale-105 duration-300">
+                <div className="w-20 h-20 bg-brand-50 rounded-full flex items-center justify-center mb-6 mx-auto shadow-sm border border-brand-100 text-brand-500">
+                  <FolderPlus size={32} />
+                </div>
+                
+                <h3 className="text-2xl font-bold text-slate-800 mb-2">Nenhum projeto encontrado</h3>
+                <p className="text-slate-500 mb-8 leading-relaxed text-sm">
+                  Parece que você ainda não tem nenhum projeto cadastrado.
+                  O ambiente está pronto para suas iniciativas.
+                </p>
+                
+                <button 
+                  onClick={handleOpenCreateModal}
+                  className="w-full flex items-center justify-center px-6 py-3.5 bg-brand-600 text-white text-base rounded-xl hover:bg-brand-700 hover:shadow-lg hover:shadow-brand-200 transition-all font-bold"
                 >
-                  <Pencil size={16} />
-                </button>
-                <button
-                  onClick={(e) => handleDeleteClick(e, project.id)}
-                  className="p-1.5 bg-white/80 backdrop-blur-sm text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 rounded-lg transition-colors shadow-sm"
-                  title="Excluir projeto"
-                >
-                  <Trash2 size={16} />
+                  <Plus size={20} className="mr-2" />
+                  Criar Primeiro Projeto
                 </button>
              </div>
+           </div>
+        </div>
+      ) : (
+        // === GRID DE PROJETOS ===
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in relative z-10">
+          {projects.map((project) => (
+            <div 
+              key={project.id} 
+              onClick={() => onSelectProject(project.id)}
+              className="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-brand-200 transition-all cursor-pointer overflow-hidden flex flex-col h-full relative"
+            >
+               {/* Ações (Editar / Excluir) */}
+               <div className="absolute top-4 right-4 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                 <button
+                    onClick={(e) => handleOpenEditModal(e, project)}
+                    className="p-1.5 bg-white/80 backdrop-blur-sm text-slate-400 hover:text-brand-600 hover:bg-brand-50 border border-slate-200 rounded-lg transition-colors shadow-sm"
+                    title="Editar projeto"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteClick(e, project.id)}
+                    className="p-1.5 bg-white/80 backdrop-blur-sm text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 rounded-lg transition-colors shadow-sm"
+                    title="Excluir projeto"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+               </div>
 
-            <div className="p-6 flex-1">
-              <div className="flex justify-between items-start mb-4 pr-16">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  project.status === 'Ativo' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {project.status}
-                </span>
-                <span className="text-xs text-slate-400">Início: {new Date(project.startDate).toLocaleDateString('pt-BR')}</span>
-              </div>
-              
-              <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-brand-600 transition-colors pr-2">
-                {project.title}
-              </h3>
-              
-              {/* Exibindo Tipo e Objetivo resumido */}
-              <div className="mb-3 flex flex-wrap gap-2">
-                 <span className="text-xs font-medium text-brand-600 bg-brand-50 px-2 py-1 rounded border border-brand-100 truncate max-w-full">
-                   {project.type || 'Projeto Geral'}
-                 </span>
-                 <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200">
-                   Resp: {project.responsibleLead}
-                 </span>
+              <div className="p-6 flex-1">
+                <div className="flex justify-between items-start mb-4 pr-16">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    project.status === 'Ativo' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {project.status}
+                  </span>
+                  <span className="text-xs text-slate-400">Início: {new Date(project.startDate).toLocaleDateString('pt-BR')}</span>
+                </div>
+                
+                <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-brand-600 transition-colors pr-2">
+                  {project.title}
+                </h3>
+                
+                {/* Exibindo Tipo e Objetivo resumido */}
+                <div className="mb-3 flex flex-wrap gap-2">
+                   <span className="text-xs font-medium text-brand-600 bg-brand-50 px-2 py-1 rounded border border-brand-100 truncate max-w-full">
+                     {project.type || 'Projeto Geral'}
+                   </span>
+                   <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200">
+                     Resp: {project.responsibleLead}
+                   </span>
+                </div>
+
+                <p className="text-sm text-slate-500 line-clamp-2 mb-4">
+                  {project.objective || project.description}
+                </p>
+                
+                <div className="mt-auto">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-600 font-medium">Progresso</span>
+                    <span className="text-slate-900 font-bold">{project.progress}%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2">
+                    <div 
+                      className="bg-brand-500 h-2 rounded-full transition-all duration-500" 
+                      style={{ width: `${project.progress}%` }}
+                    ></div>
+                  </div>
+                </div>
               </div>
 
-              <p className="text-sm text-slate-500 line-clamp-2 mb-4">
-                {project.objective || project.description}
-              </p>
-              
-              <div className="mt-auto">
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-600 font-medium">Progresso</span>
-                  <span className="text-slate-900 font-bold">{project.progress}%</span>
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                <div className="flex items-center text-xs text-slate-500">
+                  <BarChart2 size={14} className="mr-1" />
+                  {project.activities.length} Atividades
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-2">
-                  <div 
-                    className="bg-brand-500 h-2 rounded-full transition-all duration-500" 
-                    style={{ width: `${project.progress}%` }}
-                  ></div>
-                </div>
+                <ChevronRight size={16} className="text-slate-400 group-hover:text-brand-500 group-hover:translate-x-1 transition-all" />
               </div>
             </div>
+          ))}
 
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-              <div className="flex items-center text-xs text-slate-500">
-                <BarChart2 size={14} className="mr-1" />
-                {project.activities.length} Atividades
-              </div>
-              <ChevronRight size={16} className="text-slate-400 group-hover:text-brand-500 group-hover:translate-x-1 transition-all" />
+          {/* Card Placeholder para Adicionar Novo (apenas se já houver projetos) */}
+          <button 
+            onClick={handleOpenCreateModal}
+            className="border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center text-slate-400 hover:border-brand-400 hover:text-brand-500 hover:bg-brand-50 transition-all min-h-[250px]"
+          >
+            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-4 group-hover:bg-white transition-colors">
+              <Plus size={24} />
             </div>
-          </div>
-        ))}
-
-        {/* Add New Placeholder Card */}
-        <button 
-          onClick={handleOpenCreateModal}
-          className="border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center text-slate-400 hover:border-brand-400 hover:text-brand-500 hover:bg-brand-50 transition-all min-h-[250px]"
-        >
-          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-4 group-hover:bg-white transition-colors">
-            <Plus size={24} />
-          </div>
-          <span className="font-medium">Criar novo projeto</span>
-        </button>
-      </div>
+            <span className="font-medium">Criar novo projeto</span>
+          </button>
+        </div>
+      )}
 
       {/* MODAL DE CRIAÇÃO / EDIÇÃO COMPACTO */}
       {isModalOpen && (
