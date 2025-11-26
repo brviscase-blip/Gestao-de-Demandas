@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Project } from '../types';
-import { Plus, ChevronRight, BarChart2, X, Loader2, Trash2, Pencil, AlertTriangle } from 'lucide-react';
+import { Plus, ChevronRight, BarChart2, X, Loader2, Trash2, Pencil, AlertTriangle, ChevronDown } from 'lucide-react';
 
 interface ProjectListProps {
   projects: Project[];
@@ -126,7 +125,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
   };
 
   // Estilos atualizados para maior conforto visual
-  const inputClass = "w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all shadow-sm text-sm";
+  const inputClass = "w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all shadow-sm font-medium";
   const labelClass = "block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide";
 
   return (
@@ -237,8 +236,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
       {/* MODAL DE CRIAÇÃO / EDIÇÃO */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl my-8">
-            <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl my-8">
+            <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800">
                   {editingProject ? 'Editar Projeto' : 'Novo Projeto'}
@@ -249,7 +248,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
               </div>
               <button 
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors"
                 disabled={isSubmitting}
               >
                 <X size={24} />
@@ -279,21 +278,24 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                 {/* Tipo do Projeto */}
                 <div className="md:col-span-1">
                   <label htmlFor="type" className={labelClass}>Tipo do Projeto</label>
-                  <select 
-                    id="type"
-                    name="type"
-                    value={formData.type}
-                    onChange={handleChange}
-                    className={inputClass}
-                    disabled={isSubmitting}
-                  >
-                    <option value="Automação / Digitalização">Automação / Digitalização</option>
-                    <option value="Segurança & Ergonomia">Segurança & Ergonomia</option>
-                    <option value="Fluxo de Informações & Padronização">Fluxo de Informações & Padronização</option>
-                    <option value="Engajamento & Cultura">Engajamento & Cultura</option>
-                    <option value="Redução de Variabilidade (Six Sigma)">Redução de Variabilidade (Six Sigma)</option>
-                    <option value="Outro">Outro</option>
-                  </select>
+                  <div className="relative">
+                    <select 
+                      id="type"
+                      name="type"
+                      value={formData.type}
+                      onChange={handleChange}
+                      className={`${inputClass} appearance-none cursor-pointer`}
+                      disabled={isSubmitting}
+                    >
+                      <option value="Automação / Digitalização">Automação / Digitalização</option>
+                      <option value="Segurança & Ergonomia">Segurança & Ergonomia</option>
+                      <option value="Fluxo de Informações & Padronização">Fluxo de Informações & Padronização</option>
+                      <option value="Engajamento & Cultura">Engajamento & Cultura</option>
+                      <option value="Redução de Variabilidade (Six Sigma)">Redução de Variabilidade (Six Sigma)</option>
+                      <option value="Outro">Outro</option>
+                    </select>
+                    <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
                 </div>
 
                 {/* Responsável */}
@@ -391,7 +393,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                 <button 
                   type="button" 
                   onClick={() => setIsModalOpen(false)}
-                  className="px-6 py-3 text-sm text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg font-medium transition-colors"
+                  className="px-6 py-3 text-sm font-semibold text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl transition-colors"
                   disabled={isSubmitting}
                 >
                   Cancelar
@@ -399,7 +401,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                 <button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="px-6 py-3 text-sm text-white bg-brand-600 hover:bg-brand-700 rounded-lg font-medium transition-colors shadow-lg shadow-brand-200 flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="px-8 py-3 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl transition-colors shadow-lg shadow-brand-200 flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <>
