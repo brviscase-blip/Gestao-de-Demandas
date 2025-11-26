@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Project, SubActivity, TaskStatus, RecurrentMonthStatus, DMAICPhase } from '../types';
-import { MONTHS, STATUS_COLORS, DMAIC_COLORS, N8N_WEBHOOK_URL } from '../constants';
-import { ArrowLeft, Plus, Calendar, List, Trello, Clock, Target, TrendingUp, AlertTriangle, X, Save, ChevronDown, ChevronRight, Loader2, CalendarDays } from 'lucide-react';
+import { MONTHS, STATUS_COLORS, DMAIC_COLORS } from '../constants';
+import { ArrowLeft, Plus, Calendar, List, Trello, Clock, Target, TrendingUp, AlertTriangle, X, Save, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface ProjectDetailProps {
   project: Project;
@@ -15,7 +15,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
   
   // State for Task Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [targetActivity, setTargetActivity] = useState<{id: string, name: string} | null>(null);
   
   const [formData, setFormData] = useState({
@@ -132,93 +131,51 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
     setIsModalOpen(true);
   };
 
-  const handleSaveTask = async (e: React.FormEvent) => {
+  const handleSaveTask = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     
-    try {
-      let updatedActivities;
-      let payloadData = {};
-      let newTask: SubActivity;
+    let updatedActivities;
 
-      // Define newTask first to use it in payload
-      newTask = {
-        id: crypto.randomUUID(),
-        name: formData.taskName,
-        responsible: formData.responsible,
-        dmaic: formData.dmaic,
-        status: formData.status,
-        deadline: formData.deadline
-      };
-
-      if (targetActivity) {
-          // Add task to existing activity
-          updatedActivities = project.activities.map(act => {
-              if (act.id === targetActivity.id) {
-                  return {
-                      ...act,
-                      subActivities: [...act.subActivities, newTask]
-                  };
-              }
-              return act;
-          });
-          
-          // Prepare payload for N8N (Adding Task)
-          payloadData = {
-            event: 'create_task',
-            projectId: project.id,
-            projectTitle: project.title,
-            activityId: targetActivity.id,
-            activityName: targetActivity.name,
-            task: newTask,
-            timestamp: new Date().toISOString()
-          };
-
-      } else {
-          // Create new activity + task
-          const newActivityId = crypto.randomUUID();
-          
-          const newActivity = {
-              id: newActivityId,
-              name: formData.activityName,
-              subActivities: [newTask]
-          };
-          
-          updatedActivities = [...project.activities, newActivity];
-          // Auto expand new activity
-          setExpandedActivities(prev => ({ ...prev, [newActivityId]: true }));
-
-          // Prepare payload for N8N (New Activity Group)
-          payloadData = {
-            event: 'create_activity',
-            projectId: project.id,
-            projectTitle: project.title,
-            activity: newActivity,
-            timestamp: new Date().toISOString()
-          };
-      }
-      
-      // Send to Webhook (Integration)
-      if (N8N_WEBHOOK_URL) {
-        // We don't await the fetch to fail the UI update, but we log errors
-        fetch(N8N_WEBHOOK_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payloadData),
-        }).catch(err => console.error("Erro ao enviar webhook N8N:", err));
-      }
-
-      onUpdateProject({ ...project, activities: updatedActivities, progress: calculateProgress(updatedActivities) });
-      setIsModalOpen(false);
-
-    } catch (error) {
-      console.error("Erro ao salvar atividade:", error);
-      alert("Houve um erro ao tentar salvar. Verifique sua conexão e tente novamente.");
-    } finally {
-      setIsSubmitting(false);
+    if (targetActivity) {
+        // Add task to existing activity
+        updatedActivities = project.activities.map(act => {
+            if (act.id === targetActivity.id) {
+                return {
+                    ...act,
+                    subActivities: [...act.subActivities, {
+                        id: crypto.randomUUID(),
+                        name: formData.taskName,
+                        responsible: formData.responsible,
+                        dmaic: formData.dmaic,
+                        status: formData.status,
+                        deadline: formData.deadline
+                    }]
+                };
+            }
+            return act;
+        });
+    } else {
+        // Create new activity + task
+        const newId = crypto.randomUUID();
+        const newActivity = {
+            id: newId,
+            name: formData.activityName,
+            subActivities: [{
+                id: crypto.randomUUID(),
+                name: formData.taskName,
+                responsible: formData.responsible,
+                dmaic: formData.dmaic,
+                status: formData.status,
+                deadline: formData.deadline
+            }]
+        };
+        updatedActivities = [...project.activities, newActivity];
+        // Auto expand new activity
+        setExpandedActivities(prev => ({ ...prev, [newId]: true }));
     }
+    
+    onUpdateProject({ ...project, activities: updatedActivities, progress: calculateProgress(updatedActivities) });
+    setIsModalOpen(false);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -231,384 +188,394 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
 
   return (
     <div className="h-full flex flex-col bg-white relative">
-      {/* Header Area */}
-      <div className="bg-white border-b border-slate-200">
+      {/* Header */}
+      <div className="px-8 py-6 border-b border-slate-200 bg-white">
+        <button onClick={onBack} className="flex items-center text-sm text-slate-500 hover:text-brand-600 mb-6 transition-colors group">
+          <ArrowLeft size={16} className="mr-1 group-hover:-translate-x-1 transition-transform" />
+          Voltar para Projetos
+        </button>
         
-        {/* Navigation & Basic Info Row */}
-        <div className="px-8 pt-6 pb-2">
-          <button onClick={onBack} className="flex items-center text-sm text-slate-500 hover:text-brand-600 mb-4 transition-colors group">
-            <ArrowLeft size={16} className="mr-1 group-hover:-translate-x-1 transition-transform" />
-            Voltar para Projetos
-          </button>
-          
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-            {/* Title Block */}
-            <div className="flex-1">
-               <div className="flex flex-wrap items-center gap-3 mb-2">
-                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${project.status === 'Ativo' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-                  {project.status}
-                </span>
-                <span className="text-xs font-semibold text-brand-700 bg-brand-50 px-3 py-1 rounded-full border border-brand-100 flex items-center gap-1">
-                  <Target size={12} /> {project.type || 'Geral'}
-                </span>
-                <span className="text-xs text-slate-500 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded border border-slate-200">
-                  <CalendarDays size={12} /> Início: {new Date(project.startDate).toLocaleDateString('pt-BR')}
-                </span>
-              </div>
-              <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{project.title}</h1>
+        <div className="flex flex-col xl:flex-row gap-6 mb-6">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${project.status === 'Ativo' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                {project.status}
+              </span>
+              <span className="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-100">
+                {project.type || 'Projeto Geral'}
+              </span>
             </div>
-
-            {/* Progress Block (Compact) */}
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 min-w-[180px]">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Progresso</span>
-                <span className="text-xl font-bold text-brand-600">{project.progress}%</span>
-              </div>
-              <div className="w-full bg-slate-200 rounded-full h-1.5">
-                <div className="bg-brand-500 h-1.5 rounded-full transition-all duration-1000" style={{ width: `${project.progress}%` }}></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Project Charter Details Grid */}
-        <div className="px-8 pb-6 pt-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <h1 className="text-3xl font-bold text-slate-900 mb-4">{project.title}</h1>
             
-            {/* 1. Justificativa */}
-            <div className="bg-orange-50/50 p-4 rounded-lg border border-orange-100 flex flex-col">
-              <div className="flex items-center gap-2 text-orange-700 font-bold text-sm mb-2">
-                <AlertTriangle size={16} /> Justificativa (Problema)
-              </div>
-              <p className="text-slate-700 text-sm leading-relaxed flex-1">
-                {project.justification || <span className="text-slate-400 italic">Não informada.</span>}
-              </p>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+               {project.justification && (
+                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                   <div className="flex items-center gap-2 text-slate-700 font-semibold mb-1">
+                     <AlertTriangle size={14} className="text-orange-500" /> Justificativa (Problema)
+                   </div>
+                   <p className="text-slate-600 leading-relaxed text-xs">{project.justification}</p>
+                 </div>
+               )}
+               
+               {project.objective && (
+                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                   <div className="flex items-center gap-2 text-slate-700 font-semibold mb-1">
+                     <Target size={14} className="text-blue-500" /> Objetivo (Solução)
+                   </div>
+                   <p className="text-slate-600 leading-relaxed text-xs">{project.objective}</p>
+                 </div>
+               )}
 
-            {/* 2. Objetivo */}
-            <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 flex flex-col">
-              <div className="flex items-center gap-2 text-blue-700 font-bold text-sm mb-2">
-                <Target size={16} /> Objetivo (Solução)
-              </div>
-              <p className="text-slate-700 text-sm leading-relaxed flex-1">
-                {project.objective || <span className="text-slate-400 italic">Não informado.</span>}
-              </p>
+               {project.benefits && (
+                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                   <div className="flex items-center gap-2 text-slate-700 font-semibold mb-1">
+                     <TrendingUp size={14} className="text-green-500" /> Benefícios
+                   </div>
+                   <p className="text-slate-600 leading-relaxed text-xs">{project.benefits}</p>
+                 </div>
+               )}
+               
+               {!project.justification && !project.objective && (
+                 <div className="col-span-3 text-slate-500 italic">
+                   {project.description}
+                 </div>
+               )}
             </div>
+          </div>
 
-            {/* 3. Benefícios */}
-            <div className="bg-green-50/50 p-4 rounded-lg border border-green-100 flex flex-col">
-              <div className="flex items-center gap-2 text-green-700 font-bold text-sm mb-2">
-                <TrendingUp size={16} /> Benefícios Esperados
+          <div className="flex flex-col items-end gap-4 min-w-[200px]">
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 w-full">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-semibold text-slate-500 uppercase">Progresso Geral</span>
+                <span className="text-2xl font-bold text-brand-600">{project.progress}%</span>
               </div>
-              <p className="text-slate-700 text-sm leading-relaxed flex-1">
-                {project.benefits || <span className="text-slate-400 italic">Não informados.</span>}
-              </p>
+              <div className="w-full bg-slate-200 rounded-full h-2">
+                <div className="bg-brand-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${project.progress}%` }}></div>
+              </div>
             </div>
-
           </div>
         </div>
-
-        {/* Tab Navigation */}
-        <div className="flex items-center gap-8 px-8 mt-2">
+        
+        {/* Tabs */}
+        <div className="flex items-center gap-8 mt-4">
           <button 
             onClick={() => setActiveTab('list')}
-            className={`pb-3 px-2 flex items-center gap-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'list' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+            className={`pb-3 px-1 flex items-center gap-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'list' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
           >
-            <List size={18} />
-            Lista de Tarefas
+            <List size={18} /> Lista de Atividades
           </button>
           <button 
             onClick={() => setActiveTab('kanban')}
-            className={`pb-3 px-2 flex items-center gap-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'kanban' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+            className={`pb-3 px-1 flex items-center gap-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'kanban' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
           >
-            <Trello size={18} />
-            Quadro Kanban
+            <Trello size={18} /> Quadro Kanban
           </button>
           <button 
             onClick={() => setActiveTab('recurrent')}
-            className={`pb-3 px-2 flex items-center gap-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'recurrent' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+            className={`pb-3 px-1 flex items-center gap-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'recurrent' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
           >
-            <Calendar size={18} />
-            Gestão de Recorrências
+            <Calendar size={18} /> Recorrência Mensal
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-slate-50 p-8">
+      {/* Content */}
+      <div className="flex-1 bg-slate-50 p-8 overflow-auto custom-scrollbar">
         
-        {/* VIEW: LISTA */}
+        {/* TAB: LIST VIEW */}
         {activeTab === 'list' && (
-          <div className="space-y-6">
-            {project.activities.length === 0 && (
-              <div className="text-center py-20 text-slate-400">
-                <List size={48} className="mx-auto mb-4 opacity-20" />
-                <p>Nenhuma atividade cadastrada para este projeto.</p>
-                <button onClick={handleOpenNewActivity} className="text-brand-600 font-medium mt-2 hover:underline">
-                  + Adicionar primeira atividade
-                </button>
-              </div>
-            )}
-
-            {project.activities.map((activity) => (
-              <div key={activity.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div 
-                  className="bg-slate-50 px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-slate-100 transition-colors"
-                  onClick={() => toggleActivity(activity.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`transition-transform duration-200 ${expandedActivities[activity.id] ? 'rotate-90' : ''}`}>
-                      <ChevronRight size={20} className="text-slate-400" />
-                    </div>
-                    <h3 className="font-bold text-slate-800 text-lg">{activity.name}</h3>
-                    <span className="text-xs bg-white border border-slate-200 text-slate-500 px-2 py-0.5 rounded-full font-medium">
-                      {activity.subActivities.length} tarefas
-                    </span>
-                  </div>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenNewTask(activity.id, activity.name);
-                    }}
-                    className="p-2 text-brand-600 hover:bg-white hover:shadow-sm rounded-lg transition-all text-xs font-bold uppercase tracking-wide flex items-center gap-1"
-                  >
-                    <Plus size={16} /> Nova Tarefa
-                  </button>
-                </div>
-                
-                {expandedActivities[activity.id] && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-slate-500 uppercase bg-white border-b border-slate-100">
-                        <tr>
-                          <th className="px-6 py-3 font-semibold w-1/3">Tarefa</th>
-                          <th className="px-6 py-3 font-semibold">Responsável</th>
-                          <th className="px-6 py-3 font-semibold">Fase DMAIC</th>
-                          <th className="px-6 py-3 font-semibold">Prazo</th>
-                          <th className="px-6 py-3 font-semibold">Status</th>
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left border-collapse">
+                <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold w-[40%]">Atividade / Tarefa</th>
+                    <th className="px-4 py-3 font-semibold w-[20%]">Responsável</th>
+                    <th className="px-4 py-3 font-semibold text-center w-[15%]">Status</th>
+                    <th className="px-4 py-3 font-semibold w-[25%]">Fase DMAIC</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {project.activities.map(activity => {
+                    const isExpanded = expandedActivities[activity.id] ?? true; // Default open? User said "Expand/Collapse", usually default true for context.
+                    return (
+                      <React.Fragment key={activity.id}>
+                        {/* Activity Header Row */}
+                        <tr className="bg-slate-50/50 hover:bg-slate-100/50 transition-colors group border-b border-slate-100">
+                          <td colSpan={4} className="px-2 py-2">
+                            <div className="flex items-center justify-between">
+                              <button 
+                                onClick={() => toggleActivity(activity.id)}
+                                className="flex items-center gap-2 text-slate-800 font-bold hover:text-brand-600 transition-colors text-sm px-2 py-1 rounded"
+                              >
+                                {isExpanded ? <ChevronDown size={16} className="text-slate-400" /> : <ChevronRight size={16} className="text-slate-400" />}
+                                {activity.name}
+                                <span className="text-xs font-normal text-slate-400 ml-2 bg-slate-100 px-2 py-0.5 rounded-full">
+                                  {activity.subActivities.length} tarefas
+                                </span>
+                              </button>
+                              
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleOpenNewTask(activity.id, activity.name); }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-xs flex items-center gap-1 text-brand-600 hover:text-white hover:bg-brand-600 font-medium px-3 py-1.5 rounded"
+                              >
+                                <Plus size={14} /> Nova Tarefa
+                              </button>
+                            </div>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50">
-                        {activity.subActivities.map((sub) => (
-                          <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors group">
-                            <td className="px-6 py-3 font-medium text-slate-800">{sub.name}</td>
-                            <td className="px-6 py-3">
-                              <input 
-                                type="text"
-                                value={sub.responsible}
-                                onChange={(e) => handleResponsibleChange(activity.id, sub.id, e.target.value)}
-                                className="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-brand-500 focus:outline-none w-full max-w-[120px] transition-colors text-slate-600"
-                              />
+
+                        {/* Sub-Activities Rows */}
+                        {isExpanded && activity.subActivities.map((sub) => (
+                          <tr key={sub.id} className="hover:bg-slate-50 transition-colors group/row">
+                            <td className="px-4 py-2 pl-12 relative">
+                              <div className="absolute left-[29px] top-0 bottom-0 w-px bg-slate-200" />
+                              <div className="absolute left-[29px] top-1/2 w-3 h-px bg-slate-200" />
+                              <span className="text-slate-600 text-sm">{sub.name}</span>
                             </td>
-                            <td className="px-6 py-3">
-                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold ${DMAIC_COLORS[sub.dmaic]}`}>
-                                {sub.dmaic.split(' - ')[0]}
-                              </span>
+                            <td className="px-4 py-2">
+                              <div className="flex items-center gap-2 group-hover/row:bg-white rounded px-2 py-1 transition-colors">
+                                <div className="w-5 h-5 rounded-full bg-slate-200 text-[10px] flex items-center justify-center font-bold text-slate-600 shrink-0">
+                                  {sub.responsible.substring(0, 1).toUpperCase()}
+                                </div>
+                                <input 
+                                  type="text"
+                                  value={sub.responsible}
+                                  onChange={(e) => handleResponsibleChange(activity.id, sub.id, e.target.value)}
+                                  className="bg-transparent border-b border-transparent focus:border-brand-500 hover:border-slate-300 outline-none text-sm text-slate-600 w-full"
+                                />
+                              </div>
                             </td>
-                            <td className="px-6 py-3 text-slate-500 font-mono text-xs">
-                              {sub.deadline ? new Date(sub.deadline).toLocaleDateString('pt-BR') : '-'}
-                            </td>
-                            <td className="px-6 py-3">
+                            <td className="px-4 py-2 text-center">
                               <select 
                                 value={sub.status}
                                 onChange={(e) => handleStatusChange(activity.id, sub.id, e.target.value as TaskStatus)}
-                                className={`text-xs font-bold px-2 py-1 rounded-md border appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-slate-200 ${STATUS_COLORS[sub.status]}`}
+                                className={`px-2 py-1 rounded text-xs font-medium border-0 cursor-pointer outline-none ring-1 ring-inset ring-transparent hover:ring-slate-200 focus:ring-brand-500 w-full text-center ${STATUS_COLORS[sub.status]}`}
                               >
-                                {Object.keys(STATUS_COLORS).map(s => (
-                                  <option key={s} value={s}>{s}</option>
-                                ))}
+                                <option value="Não Iniciado">Não Iniciado</option>
+                                <option value="Em Andamento">Em Andamento</option>
+                                <option value="Concluído">Concluído</option>
+                                <option value="Bloqueado">Bloqueado</option>
+                              </select>
+                            </td>
+                            <td className="px-4 py-2">
+                              <select 
+                                value={sub.dmaic}
+                                onChange={(e) => handleDmaicChange(activity.id, sub.id, e.target.value as DMAICPhase)}
+                                className={`px-2 py-1 rounded text-xs font-semibold border-0 cursor-pointer outline-none ring-1 ring-inset ring-transparent hover:ring-slate-200 focus:ring-brand-500 w-full ${DMAIC_COLORS[sub.dmaic] || 'bg-gray-100 text-gray-800'}`}
+                              >
+                                <option value="D - Definir">D - Definir</option>
+                                <option value="M - Mensurar">M - Mensurar</option>
+                                <option value="A - Analisar">A - Analisar</option>
+                                <option value="I - Implementar">I - Implementar</option>
+                                <option value="C - Controlar">C - Controlar</option>
                               </select>
                             </td>
                           </tr>
                         ))}
-                        {activity.subActivities.length === 0 && (
-                          <tr>
-                            <td colSpan={5} className="px-6 py-4 text-center text-slate-400 italic text-xs">
-                              Nenhuma tarefa nesta atividade.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* VIEW: KANBAN */}
-        {activeTab === 'kanban' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 h-full min-h-[500px]">
-            {['Não Iniciado', 'Em Andamento', 'Bloqueado', 'Concluído'].map((status) => (
-              <div key={status} className="bg-slate-100/50 rounded-xl p-4 flex flex-col h-full border border-slate-200">
-                <div className={`font-bold mb-4 flex items-center justify-between pb-3 border-b border-slate-200 ${status === 'Concluído' ? 'text-green-700' : status === 'Bloqueado' ? 'text-red-700' : 'text-slate-700'}`}>
-                  <span>{status}</span>
-                  <span className="text-xs bg-white px-2 py-1 rounded-full text-slate-500 shadow-sm border border-slate-100">
-                    {project.activities.flatMap(a => a.subActivities).filter(s => s.status === status).length}
-                  </span>
-                </div>
-                <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-1">
-                  {project.activities.flatMap(a => a.subActivities.map(s => ({...s, activityName: a.name, activityId: a.id})))
-                    .filter(s => s.status === status)
-                    .map(task => (
-                      <div key={task.id} className="bg-white p-3 rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer group relative">
-                        <div className="text-[10px] text-slate-400 mb-1 flex justify-between items-center">
-                          <span className="truncate max-w-[120px]" title={task.activityName}>{task.activityName}</span>
-                          <span className={`w-2 h-2 rounded-full ${DMAIC_COLORS[task.dmaic].includes('purple') ? 'bg-purple-500' : DMAIC_COLORS[task.dmaic].includes('indigo') ? 'bg-indigo-500' : DMAIC_COLORS[task.dmaic].includes('cyan') ? 'bg-cyan-500' : DMAIC_COLORS[task.dmaic].includes('orange') ? 'bg-orange-500' : 'bg-emerald-500'}`} title={task.dmaic}></span>
-                        </div>
-                        <p className="text-sm font-medium text-slate-800 mb-3 leading-snug">{task.name}</p>
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-50">
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500 border border-slate-200">
-                              {task.responsible.substring(0, 2).toUpperCase()}
-                            </div>
-                            <span className="text-xs text-slate-500 truncate max-w-[60px]">{task.responsible}</span>
-                          </div>
-                          {task.deadline && (
-                            <span className={`text-[10px] flex items-center gap-1 px-1.5 py-0.5 rounded ${new Date(task.deadline) < new Date() && status !== 'Concluído' ? 'bg-red-50 text-red-600' : 'bg-slate-50 text-slate-400'}`}>
-                              <Clock size={10} /> {new Date(task.deadline).toLocaleDateString(undefined, {day: '2-digit', month: '2-digit'})}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* VIEW: RECORRÊNCIAS */}
-        {activeTab === 'recurrent' && (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-              <h3 className="font-bold text-lg text-slate-800">Controle de Recorrências</h3>
-              <p className="text-slate-500 text-sm">Acompanhamento mensal das rotinas do projeto.</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs text-slate-500 uppercase bg-white border-b border-slate-100">
-                  <tr>
-                    <th className="px-6 py-4 font-semibold w-1/4">Tema / Demanda</th>
-                    {MONTHS.map(m => (
-                      <th key={m} className="px-2 py-4 font-semibold text-center w-[6%]">{m}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {project.recurrentDemands.length > 0 ? (
-                    project.recurrentDemands.map((demand) => (
-                      <tr key={demand.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4 font-medium text-slate-800 border-r border-slate-100 bg-slate-50/30">
-                          {demand.theme}
-                        </td>
-                        {demand.data.map((monthStatus, idx) => (
-                          <td key={idx} className="px-2 py-4 text-center border-r border-slate-100 last:border-0">
-                            <button
-                              onClick={() => handleRecurrentToggle(demand.id, idx)}
-                              className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all text-xs ${
-                                monthStatus.status === 'OK' ? 'bg-green-100 text-green-700 hover:bg-green-200 border border-green-200' :
-                                monthStatus.status === 'X' ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-200' :
-                                monthStatus.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border border-yellow-200' :
-                                'bg-slate-50 text-slate-300 hover:bg-slate-100 border border-slate-200'
-                              }`}
-                            >
-                              {monthStatus.status === 'OK' && 'OK'}
-                              {monthStatus.status === 'X' && <X size={14} />}
-                              {monthStatus.status === 'PENDING' && '!'}
-                              {monthStatus.status === '-' && '-'}
-                            </button>
-                          </td>
-                        ))}
-                      </tr>
-                    ))
-                  ) : (
+                      </React.Fragment>
+                    );
+                  })}
+                  {project.activities.length === 0 && (
                     <tr>
-                      <td colSpan={13} className="px-6 py-12 text-center text-slate-400">
-                        <Calendar size={32} className="mx-auto mb-3 opacity-20" />
-                        Nenhuma demanda recorrente configurada.
+                      <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
+                        Nenhuma atividade cadastrada. Comece adicionando uma nova demanda abaixo.
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
+             <div className="p-4 border-t border-slate-200 bg-slate-50">
+              <button 
+                onClick={handleOpenNewActivity}
+                className="flex items-center text-sm font-medium text-brand-600 hover:text-brand-700 bg-white border border-brand-200 hover:bg-brand-50 px-4 py-2 rounded-lg transition-all shadow-sm"
+              >
+                <Plus size={16} className="mr-2" />
+                Adicionar Nova Atividade (Demanda Principal)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: KANBAN VIEW */}
+        {activeTab === 'kanban' && (
+          <div className="flex gap-6 overflow-x-auto h-full pb-4">
+            {(['Não Iniciado', 'Em Andamento', 'Bloqueado', 'Concluído'] as TaskStatus[]).map(status => {
+              const tasksInColumn = project.activities.flatMap(a => a.subActivities).filter(s => s.status === status);
+              
+              return (
+                <div key={status} className="flex-shrink-0 w-80 flex flex-col h-full rounded-xl bg-slate-100/50 border border-slate-200">
+                  <div className={`p-4 border-b border-slate-200 font-semibold text-sm flex justify-between items-center
+                    ${status === 'Concluído' ? 'text-green-700 bg-green-50 rounded-t-xl' : ''}
+                    ${status === 'Bloqueado' ? 'text-red-700 bg-red-50 rounded-t-xl' : ''}
+                  `}>
+                    {status}
+                    <span className="bg-white/50 px-2 py-0.5 rounded text-xs border border-slate-200/50">
+                      {tasksInColumn.length}
+                    </span>
+                  </div>
+                  <div className="p-4 flex-1 overflow-y-auto space-y-3 custom-scrollbar">
+                    {tasksInColumn.map(task => {
+                      // Find parent activity name for context
+                      const parentActivity = project.activities.find(a => a.subActivities.some(s => s.id === task.id))?.name;
+                      
+                      return (
+                        <div key={task.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing">
+                          <div className="text-xs text-slate-400 mb-1 flex justify-between">
+                            <span>{parentActivity}</span>
+                            <span className={`font-mono text-[10px] px-1 rounded ${DMAIC_COLORS[task.dmaic]}`}>{task.dmaic.split(' - ')[0]}</span>
+                          </div>
+                          <p className="text-sm font-medium text-slate-800 mb-3">{task.name}</p>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] flex items-center justify-center font-bold">
+                                {task.responsible.substring(0, 1)}
+                              </div>
+                              <span className="text-xs text-slate-500">{task.responsible}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {tasksInColumn.length === 0 && (
+                      <div className="text-center py-8 text-slate-400 text-xs italic">
+                        Vazio
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* TAB: RECURRENT (Matrix) */}
+        {activeTab === 'recurrent' && (
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+             <div className="px-6 py-4 border-b border-slate-200 bg-red-50 flex items-center justify-between">
+               <div className="flex items-center text-red-800 font-bold">
+                 <Clock className="mr-2" size={20} />
+                 Demandas Recorrentes | Mensal
+               </div>
+               <div className="flex gap-4 text-xs">
+                 <div className="flex items-center gap-1"><div className="w-3 h-3 bg-blue-700 rounded-sm"></div> OK</div>
+                 <div className="flex items-center gap-1"><div className="w-3 h-3 bg-red-500 rounded-sm"></div> Pendente (X)</div>
+                 <div className="flex items-center gap-1"><div className="w-3 h-3 bg-slate-200 rounded-sm"></div> N/A (-)</div>
+               </div>
+             </div>
+             
+             <div className="overflow-x-auto">
+               <table className="w-full text-center border-collapse">
+                 <thead>
+                   <tr>
+                     <th className="text-left p-4 min-w-[200px] border-b border-r border-slate-200 bg-slate-50 text-sm font-bold text-slate-700">Tema</th>
+                     {MONTHS.map((month, i) => (
+                       <th key={month} className="p-2 border-b border-r border-slate-200 bg-slate-50 text-sm font-bold text-slate-700 min-w-[60px]">
+                         {i + 1}.{month}
+                       </th>
+                     ))}
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {project.recurrentDemands.map((row) => (
+                     <tr key={row.id} className="hover:bg-slate-50">
+                       <td className="text-left p-4 border-b border-r border-slate-200 font-medium text-slate-700 text-sm">
+                         {row.theme}
+                       </td>
+                       {row.data.map((cell, idx) => {
+                         let cellClass = "bg-white text-slate-400"; // Default -
+                         if (cell.status === 'OK') cellClass = "bg-blue-700 text-white";
+                         if (cell.status === 'X') cellClass = "bg-red-500 text-white";
+                         if (cell.status === 'PENDING') cellClass = "bg-white text-slate-800 font-bold border-2 border-blue-700 inset-0";
+
+                         return (
+                           <td 
+                             key={`${row.id}-${idx}`} 
+                             onClick={() => handleRecurrentToggle(row.id, idx)}
+                             className="p-1 border-b border-r border-slate-200 cursor-pointer h-12"
+                           >
+                             <div className={`w-full h-full flex items-center justify-center rounded text-xs font-bold transition-all ${cellClass}`}>
+                               {cell.status === 'PENDING' ? 'OK' : cell.status}
+                             </div>
+                           </td>
+                         );
+                       })}
+                     </tr>
+                   ))}
+                   {project.recurrentDemands.length === 0 && (
+                     <tr>
+                       <td colSpan={13} className="p-8 text-slate-400 italic">
+                         Nenhuma demanda recorrente configurada para este projeto.
+                       </td>
+                     </tr>
+                   )}
+                 </tbody>
+               </table>
+             </div>
           </div>
         )}
       </div>
 
-      {/* Floating Action Button */}
-      {activeTab === 'list' && (
-        <button
-          onClick={handleOpenNewActivity}
-          className="absolute bottom-8 right-8 bg-brand-600 text-white p-4 rounded-full shadow-xl shadow-brand-200 hover:bg-brand-700 transition-all hover:scale-110 z-10 flex items-center justify-center group"
-          title="Nova Atividade Principal"
-        >
-          <Plus size={24} className="group-hover:rotate-90 transition-transform duration-300" />
-        </button>
-      )}
-
-      {/* MODAL: NOVA ATIVIDADE / TAREFA */}
+      {/* MODAL: ADICIONAR ATIVIDADE / TAREFA */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all scale-100">
-            {/* Header Modal */}
-            <div className="px-6 py-4 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">
-                  {targetActivity ? 'Nova Tarefa' : 'Nova Atividade Principal'}
+                <h2 className="text-xl font-bold text-slate-800">
+                  {targetActivity ? 'Nova Sub-Atividade' : 'Nova Atividade Principal'}
                 </h2>
                 <p className="text-xs text-slate-500 mt-1">
                   {targetActivity 
-                    ? `Adicionando à: ${targetActivity.name}` 
+                    ? `Adicionando tarefa para: ${targetActivity.name}` 
                     : 'Crie um grupo de atividades e adicione a primeira tarefa.'}
                 </p>
               </div>
               <button 
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
-
+            
             <form onSubmit={handleSaveTask} className="p-6 space-y-5">
               
-              {/* Nome da Atividade (Só aparece se for nova atividade principal) */}
+              {/* Se for NOVA ATIVIDADE, mostra o campo de Nome da Atividade */}
               {!targetActivity && (
                 <div>
                   <label htmlFor="activityName" className={labelClass}>Nome da Atividade Principal</label>
                   <input 
                     type="text" 
-                    name="activityName"
                     id="activityName"
+                    name="activityName"
+                    required={!targetActivity}
                     value={formData.activityName}
                     onChange={handleChange}
                     placeholder="Ex: Mapeamento de Processos"
                     className={inputClass}
-                    required={!targetActivity}
                   />
                 </div>
               )}
 
-              {/* Separator / Subtitle */}
-              <div className="pt-2 border-t border-slate-100">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
+              <div className="pt-2">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
                   Detalhes da Tarefa / Sub-Atividade
-                </p>
+                </h3>
                 
                 <div className="space-y-4">
                   <div>
                     <label htmlFor="taskName" className={labelClass}>Nome da Tarefa</label>
                     <input 
                       type="text" 
-                      name="taskName"
                       id="taskName"
+                      name="taskName"
+                      required
                       value={formData.taskName}
                       onChange={handleChange}
                       placeholder="Ex: Realizar entrevistas com operadores"
                       className={inputClass}
-                      required
                     />
                   </div>
 
@@ -617,8 +584,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                       <label htmlFor="responsible" className={labelClass}>Responsável</label>
                       <input 
                         type="text" 
-                        name="responsible"
                         id="responsible"
+                        name="responsible"
                         value={formData.responsible}
                         onChange={handleChange}
                         className={inputClass}
@@ -628,8 +595,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                       <label htmlFor="deadline" className={labelClass}>Prazo (Opcional)</label>
                       <input 
                         type="date" 
-                        name="deadline"
                         id="deadline"
+                        name="deadline"
                         value={formData.deadline}
                         onChange={handleChange}
                         className={inputClass}
@@ -640,70 +607,55 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="dmaic" className={labelClass}>Fase DMAIC</label>
-                      <div className="relative">
-                        <select 
-                          name="dmaic" 
-                          id="dmaic"
-                          value={formData.dmaic}
-                          onChange={handleChange}
-                          className={`${inputClass} appearance-none`}
-                        >
-                          {Object.keys(DMAIC_COLORS).map(opt => (
-                            <option key={opt} value={opt}>{opt}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={16} className="absolute right-3 top-3 text-slate-400 pointer-events-none" />
-                      </div>
+                      <select 
+                        id="dmaic"
+                        name="dmaic"
+                        value={formData.dmaic}
+                        onChange={handleChange}
+                        className={inputClass}
+                      >
+                        <option value="D - Definir">D - Definir</option>
+                        <option value="M - Mensurar">M - Mensurar</option>
+                        <option value="A - Analisar">A - Analisar</option>
+                        <option value="I - Implementar">I - Implementar</option>
+                        <option value="C - Controlar">C - Controlar</option>
+                      </select>
                     </div>
                     <div>
                       <label htmlFor="status" className={labelClass}>Status Inicial</label>
-                      <div className="relative">
-                        <select 
-                          name="status" 
-                          id="status"
-                          value={formData.status}
-                          onChange={handleChange}
-                          className={`${inputClass} appearance-none`}
-                        >
-                          {Object.keys(STATUS_COLORS).map(opt => (
-                            <option key={opt} value={opt}>{opt}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={16} className="absolute right-3 top-3 text-slate-400 pointer-events-none" />
-                      </div>
+                      <select 
+                        id="status"
+                        name="status"
+                        value={formData.status}
+                        onChange={handleChange}
+                        className={inputClass}
+                      >
+                        <option value="Não Iniciado">Não Iniciado</option>
+                        <option value="Em Andamento">Em Andamento</option>
+                        <option value="Bloqueado">Bloqueado</option>
+                        <option value="Concluído">Concluído</option>
+                      </select>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4 flex items-center justify-end gap-3">
+              <div className="pt-4 flex items-center justify-end gap-3 mt-4">
                 <button 
                   type="button" 
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2 text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg font-medium transition-colors"
-                  disabled={isSubmitting}
+                  className="px-4 py-2 text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg font-medium transition-colors"
                 >
                   Cancelar
                 </button>
                 <button 
                   type="submit" 
-                  className="px-5 py-2 text-white bg-brand-600 hover:bg-brand-700 rounded-lg font-medium transition-colors shadow-lg shadow-brand-100 flex items-center"
-                  disabled={isSubmitting}
+                  className="px-4 py-2 text-white bg-brand-600 hover:bg-brand-700 rounded-lg font-medium transition-colors shadow-sm flex items-center"
                 >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 size={18} className="mr-2 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
-                      <Save size={18} className="mr-2" />
-                      Salvar
-                    </>
-                  )}
+                  <Save size={18} className="mr-2" />
+                  Salvar
                 </button>
               </div>
-
             </form>
           </div>
         </div>
