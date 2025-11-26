@@ -160,8 +160,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
       {/* MODAL DE CRIAÇÃO */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
-          {/* Aumentei para max-w-5xl para dar mais espaço */}
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl my-8">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl my-8">
             <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800">Novo Projeto</h2>
@@ -253,16 +252,16 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                   Detalhamento Estratégico
                 </h3>
 
-                <div className="grid gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Justificativa */}
-                  <div>
+                  <div className="md:col-span-1">
                     <label htmlFor="justification" className={labelClass}>
                       Justificativa (Qual o problema atual?)
                     </label>
                     <textarea 
                       id="justification"
                       name="justification"
-                      rows={3}
+                      rows={4}
                       value={formData.justification}
                       onChange={handleChange}
                       placeholder="Descreva o problema ou dor atual que motivou este projeto..."
@@ -272,14 +271,14 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                   </div>
 
                   {/* Objetivo */}
-                  <div>
+                  <div className="md:col-span-1">
                     <label htmlFor="objective" className={labelClass}>
                       Objetivo (Qual a solução proposta?)
                     </label>
                     <textarea 
                       id="objective"
                       name="objective"
-                      rows={3}
+                      rows={4}
                       value={formData.objective}
                       onChange={handleChange}
                       placeholder="O que será feito para mitigar ou eliminar o problema?"
@@ -289,14 +288,14 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                   </div>
 
                   {/* Benefícios */}
-                  <div>
+                  <div className="md:col-span-2">
                     <label htmlFor="benefits" className={labelClass}>
                       Benefícios Esperados (Ganhos quantitativos/qualitativos)
                     </label>
                     <textarea 
                       id="benefits"
                       name="benefits"
-                      rows={3}
+                      rows={4}
                       value={formData.benefits}
                       onChange={handleChange}
                       placeholder="Quais os ganhos esperados com a implementação?"
