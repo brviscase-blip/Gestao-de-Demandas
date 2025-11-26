@@ -10,6 +10,7 @@ import { supabase } from './supabaseClient';
 import { Loader2 } from 'lucide-react';
 
 type ViewState = 'dashboard' | 'project-list' | 'project-detail';
+type Theme = 'light' | 'dark';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<ViewState>('dashboard');
@@ -17,6 +18,30 @@ const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Theme State
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme');
+      return (savedTheme as Theme) || 'light';
+    }
+    return 'light';
+  });
+
+  // Apply theme to document
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
 
   // Busca dados do Supabase ao carregar
   useEffect(() => {
@@ -29,8 +54,6 @@ const App: React.FC = () => {
       
       console.log('Iniciando busca no Supabase...');
 
-      // Seleciona todas as colunas da tabela 'gestão_de_demandas'
-      // Removida ordenação por 'created_at' para evitar erros se a coluna não existir
       const { data, error } = await supabase
         .from('gestão_de_demandas')
         .select('*');
@@ -40,17 +63,9 @@ const App: React.FC = () => {
         alert(`Erro ao conectar no banco: ${error.message}`);
         setProjects([]);
       } else if (data) {
-        console.log('Dados brutos recebidos do Supabase:', data);
-
-        // Mapeia do formato do Banco de Dados para o Frontend
-        // Usa fallback para lidar com variações de Maiúsculas/Minúsculas e Acentos
         const mappedProjects: Project[] = data.map((item: any) => {
-          // Helper para pegar valor ignorando case/acentos se necessário, 
-          // mas priorizando os nomes exatos fornecidos
-          
           return {
             id: item.id || crypto.randomUUID(),
-            // Tenta variações comuns de nome de coluna
             title: item.Nome_do_Projeto || item.nome_do_projeto || 'Sem Título',
             type: item.Tipo_do_Projeto || item.tipo_do_projeto || 'Geral',
             startDate: item.Data_de_Inicio || item.data_de_inicio || new Date().toISOString(),
@@ -58,18 +73,13 @@ const App: React.FC = () => {
             objective: item.Objetivo || item.objetivo || '',
             benefits: item.Beneficios_Esperados || item.beneficios_esperados || '',
             description: item.Objetivo || item.objetivo || '', 
-            
-            // Acesso seguro a propriedades com acentos
             responsibleLead: item['Responsável_Principal'] || item['responsável_principal'] || item.Responsavel_Principal || 'Não atribuído',
-            
             progress: 0, 
             status: 'Ativo',
             activities: [],
             recurrentDemands: []
           };
         });
-        
-        console.log('Projetos mapeados:', mappedProjects);
         setProjects(mappedProjects);
       }
     } catch (err) {
@@ -90,20 +100,13 @@ const App: React.FC = () => {
   };
 
   const handleUpdateProject = (updatedProject: Project) => {
-    // Atualiza estado local
     setProjects(prevProjects => 
       prevProjects.map(p => p.id === updatedProject.id ? updatedProject : p)
     );
-    
-    // TODO: Futuramente, implementar a atualização no Supabase aqui também
-    // supabase.from('gestão_de_demandas').update({ ... }).eq('id', updatedProject.id)
   };
 
   const handleAddProject = async (newProject: Project): Promise<boolean> => {
     try {
-      // 1. Tenta enviar para o N8N se a URL estiver configurada
-      // O N8N cuidará de inserir no Supabase
-      // Envia ACTION: 'create'
       if (N8N_WEBHOOK_URL) {
         const payload = {
           action: 'create',
@@ -121,13 +124,9 @@ const App: React.FC = () => {
         if (!response.ok) {
           throw new Error(`Erro na integração N8N: ${response.statusText}`);
         }
-        
-        console.log("Projeto enviado com sucesso para o N8N (Create)!");
       } else {
         console.warn("URL do Webhook N8N não configurada em constants.ts.");
       }
-
-      // 2. Atualiza o estado local (Optimistic UI)
       setProjects(prev => [newProject, ...prev]);
       return true;
 
@@ -140,20 +139,15 @@ const App: React.FC = () => {
 
   const handleEditProject = async (updatedProject: Project): Promise<boolean> => {
     try {
-      // 1. Atualização Otimista
       setProjects(prevProjects => 
         prevProjects.map(p => p.id === updatedProject.id ? updatedProject : p)
       );
 
-      // 2. Envia para o N8N com action: 'update'
       if (N8N_WEBHOOK_URL) {
         const payload = {
           action: 'update',
           ...updatedProject
         };
-
-        console.log("Enviando solicitação de edição para N8N:", payload);
-
         const response = await fetch(N8N_WEBHOOK_URL, {
           method: 'POST',
           headers: {
@@ -165,34 +159,25 @@ const App: React.FC = () => {
         if (!response.ok) {
           throw new Error(`Erro ao editar no N8N: ${response.statusText}`);
         }
-        console.log("Projeto editado com sucesso via N8N!");
-      } else {
-        console.warn("URL do Webhook N8N não configurada.");
       }
       return true;
     } catch (error) {
       console.error("Erro ao editar projeto:", error);
       alert("Houve um erro ao tentar editar o projeto no servidor.");
-      // O ideal seria reverter o estado aqui se falhar, mas para o MVP manteremos simples
       return false;
     }
   };
 
   const handleDeleteProject = async (projectId: string) => {
-    // 1. Atualização Otimista (Remove da tela imediatamente)
     const previousProjects = [...projects];
     setProjects(prev => prev.filter(p => p.id !== projectId));
 
     try {
       if (N8N_WEBHOOK_URL) {
-        // Envia ACTION: 'delete'
         const payload = {
           action: 'delete',
           id: projectId
         };
-
-        console.log("Enviando solicitação de exclusão para N8N:", payload);
-
         const response = await fetch(N8N_WEBHOOK_URL, {
           method: 'POST',
           headers: {
@@ -204,12 +189,10 @@ const App: React.FC = () => {
         if (!response.ok) {
           throw new Error(`Erro ao excluir no N8N: ${response.statusText}`);
         }
-        console.log("Solicitação de exclusão enviada com sucesso!");
       }
     } catch (error) {
       console.error("Erro ao excluir projeto:", error);
       alert("Erro ao excluir o projeto no servidor. A ação será desfeita localmente.");
-      // Reverte a exclusão visual se der erro
       setProjects(previousProjects);
     }
   };
@@ -218,18 +201,18 @@ const App: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-600">
+      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400">
         <div className="flex flex-col items-center gap-4">
           <Loader2 size={40} className="animate-spin text-brand-600" />
           <p className="font-medium animate-pulse">Carregando seus projetos...</p>
-          <p className="text-xs text-slate-400 max-w-xs text-center">Conectando ao Supabase para buscar dados da tabela 'gestão_de_demandas'</p>
+          <p className="text-xs text-slate-400 max-w-xs text-center">Conectando ao Supabase para buscar dados...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans overflow-hidden transition-colors duration-300">
       <Sidebar 
         activeView={activeView} 
         onChangeView={(view) => {
@@ -238,6 +221,8 @@ const App: React.FC = () => {
         }}
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+        theme={theme}
+        toggleTheme={toggleTheme}
       />
       
       <main className="flex-1 overflow-auto flex flex-col relative transition-all duration-300">

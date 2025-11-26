@@ -1,14 +1,17 @@
+
 import React from 'react';
-import { LayoutDashboard, FolderKanban, Settings, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, Settings, LogOut, ChevronLeft, ChevronRight, Moon, Sun } from 'lucide-react';
 
 interface SidebarProps {
   activeView: 'dashboard' | 'project-list' | 'project-detail';
   onChangeView: (view: 'dashboard' | 'project-list') => void;
   isOpen: boolean;
   onToggle: () => void;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeView, onChangeView, isOpen, onToggle }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeView, onChangeView, isOpen, onToggle, theme, toggleTheme }) => {
   const getLinkClass = (viewName: string) => {
     const isActive = activeView === viewName || (viewName === 'project-list' && activeView === 'project-detail');
     return `flex items-center px-4 py-3 mb-2 rounded-lg transition-colors duration-200 ${
@@ -64,9 +67,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onChangeView, isOp
         )}
         {!isOpen && <div className="my-4 border-t border-slate-800 mx-2"></div>}
         
-        <button className={`flex items-center px-4 py-3 mb-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors ${isOpen ? 'w-full' : 'justify-center'}`} title={!isOpen ? "Sistema" : ""}>
-          <Settings size={20} className={`${isOpen ? 'mr-3' : ''}`} />
-          {isOpen && <span className="font-medium whitespace-nowrap">Sistema</span>}
+        {/* THEME TOGGLE BUTTON (Antigo Sistema) */}
+        <button 
+          onClick={toggleTheme}
+          className={`flex items-center px-4 py-3 mb-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors ${isOpen ? 'w-full' : 'justify-center'}`} 
+          title={!isOpen ? (theme === 'dark' ? "Modo Claro" : "Modo Escuro") : ""}
+        >
+          {theme === 'dark' ? (
+             <Sun size={20} className={`${isOpen ? 'mr-3' : ''} text-yellow-500`} />
+          ) : (
+             <Moon size={20} className={`${isOpen ? 'mr-3' : ''}`} />
+          )}
+          {isOpen && <span className="font-medium whitespace-nowrap">{theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>}
         </button>
       </nav>
 

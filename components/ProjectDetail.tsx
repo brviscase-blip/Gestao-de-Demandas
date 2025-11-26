@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Project, SubActivity, TaskStatus, RecurrentMonthStatus, DMAICPhase } from '../types';
 import { MONTHS, STATUS_COLORS, DMAIC_COLORS } from '../constants';
@@ -183,16 +184,16 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const inputClass = "w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all shadow-sm font-medium";
-  const labelClass = "block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide";
+  const inputClass = "w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all shadow-sm font-medium";
+  const labelClass = "block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wide";
 
   return (
-    <div className="h-full flex flex-col bg-slate-50 relative">
+    <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900 relative transition-colors duration-300">
       {/* Header Melhorado */}
-      <div className="bg-white border-b border-slate-200 shadow-sm z-10">
+      <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm z-10 transition-colors">
         {/* Barra de Topo - Apenas Voltar */}
-        <div className="px-8 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-            <button onClick={onBack} className="flex items-center text-sm font-bold text-slate-500 hover:text-brand-600 transition-colors group">
+        <div className="px-8 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800">
+            <button onClick={onBack} className="flex items-center text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-brand-600 transition-colors group">
               <ArrowLeft size={16} className="mr-2 group-hover:-translate-x-1 transition-transform" />
               Voltar para Projetos
             </button>
@@ -209,10 +210,10 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
               <div className="grid grid-cols-12 gap-4">
                 
                 {/* Título - Ocupa 4 colunas (1/3) */}
-                <div className="col-span-12 xl:col-span-4 bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col justify-center relative overflow-hidden group">
+                <div className="col-span-12 xl:col-span-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-4 flex flex-col justify-center relative overflow-hidden group">
                    <div className="absolute top-0 left-0 w-1 h-full bg-brand-500"></div>
                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Projeto</span>
-                   <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight truncate" title={project.title}>
+                   <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight truncate" title={project.title}>
                     {project.title}
                    </h1>
                 </div>
@@ -220,45 +221,45 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                 {/* Meta Dados - Distribuidos no restante */}
                 
                 {/* Responsável */}
-                <div className="col-span-6 md:col-span-3 xl:col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-center">
+                <div className="col-span-6 md:col-span-3 xl:col-span-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3 flex flex-col justify-center">
                    <div className="flex items-center gap-2 mb-1">
                       <User size={14} className="text-slate-400" />
                       <span className="text-[10px] font-bold text-slate-400 uppercase">Responsável</span>
                    </div>
-                   <div className="font-bold text-slate-700 text-sm truncate" title={project.responsibleLead}>
+                   <div className="font-bold text-slate-700 dark:text-slate-200 text-sm truncate" title={project.responsibleLead}>
                       {project.responsibleLead}
                    </div>
                 </div>
 
                 {/* Data */}
-                <div className="col-span-6 md:col-span-3 xl:col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-center">
+                <div className="col-span-6 md:col-span-3 xl:col-span-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3 flex flex-col justify-center">
                    <div className="flex items-center gap-2 mb-1">
                       <CalendarDays size={14} className="text-slate-400" />
                       <span className="text-[10px] font-bold text-slate-400 uppercase">Início</span>
                    </div>
-                   <div className="font-bold text-slate-700 text-sm">
+                   <div className="font-bold text-slate-700 dark:text-slate-200 text-sm">
                       {new Date(project.startDate).toLocaleDateString('pt-BR')}
                    </div>
                 </div>
 
                 {/* Status */}
-                <div className={`col-span-6 md:col-span-3 xl:col-span-2 border rounded-xl p-3 flex flex-col justify-center ${project.status === 'Ativo' ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
+                <div className={`col-span-6 md:col-span-3 xl:col-span-2 border rounded-xl p-3 flex flex-col justify-center ${project.status === 'Ativo' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'}`}>
                    <div className="flex items-center gap-2 mb-1">
                       <Activity size={14} className={project.status === 'Ativo' ? 'text-green-500' : 'text-yellow-500'} />
-                      <span className={`text-[10px] font-bold uppercase ${project.status === 'Ativo' ? 'text-green-600/70' : 'text-yellow-600/70'}`}>Status</span>
+                      <span className={`text-[10px] font-bold uppercase ${project.status === 'Ativo' ? 'text-green-600/70 dark:text-green-400/70' : 'text-yellow-600/70 dark:text-yellow-400/70'}`}>Status</span>
                    </div>
-                   <div className={`font-bold text-sm ${project.status === 'Ativo' ? 'text-green-700' : 'text-yellow-700'}`}>
+                   <div className={`font-bold text-sm ${project.status === 'Ativo' ? 'text-green-700 dark:text-green-300' : 'text-yellow-700 dark:text-yellow-300'}`}>
                       {project.status}
                    </div>
                 </div>
 
                 {/* Tipo */}
-                <div className="col-span-6 md:col-span-3 xl:col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-center">
+                <div className="col-span-6 md:col-span-3 xl:col-span-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3 flex flex-col justify-center">
                    <div className="flex items-center gap-2 mb-1">
                       <Tag size={14} className="text-slate-400" />
                       <span className="text-[10px] font-bold text-slate-400 uppercase">Tipo</span>
                    </div>
-                   <div className="font-bold text-slate-700 text-xs truncate" title={project.type}>
+                   <div className="font-bold text-slate-700 dark:text-slate-200 text-xs truncate" title={project.type}>
                       {project.type || 'Geral'}
                    </div>
                 </div>
@@ -267,29 +268,29 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
 
               {/* LINHA 2: Cards Estratégicos (Aumentados) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
-                <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 hover:border-orange-200 hover:bg-orange-50/30 transition-colors flex flex-col min-h-[220px] h-full">
-                   <div className="flex items-center gap-2 text-orange-600 font-bold text-xs uppercase mb-3 pb-2 border-b border-orange-100/50">
+                <div className="bg-slate-50 dark:bg-slate-700/50 p-5 rounded-xl border border-slate-100 dark:border-slate-600 hover:border-orange-200 hover:bg-orange-50/30 dark:hover:bg-orange-900/20 transition-colors flex flex-col min-h-[220px] h-full">
+                   <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 font-bold text-xs uppercase mb-3 pb-2 border-b border-orange-100/50 dark:border-orange-900/50">
                      <AlertTriangle size={14} /> Justificativa (Problema)
                    </div>
-                   <p className="text-slate-700 text-sm leading-relaxed flex-1">
+                   <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed flex-1">
                      {project.justification || <span className="text-slate-400 italic">Não informado</span>}
                    </p>
                 </div>
 
-                <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/30 transition-colors flex flex-col min-h-[220px] h-full">
-                   <div className="flex items-center gap-2 text-blue-600 font-bold text-xs uppercase mb-3 pb-2 border-b border-blue-100/50">
+                <div className="bg-slate-50 dark:bg-slate-700/50 p-5 rounded-xl border border-slate-100 dark:border-slate-600 hover:border-blue-200 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors flex flex-col min-h-[220px] h-full">
+                   <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-xs uppercase mb-3 pb-2 border-b border-blue-100/50 dark:border-blue-900/50">
                      <Target size={14} /> Objetivo (Solução)
                    </div>
-                   <p className="text-slate-700 text-sm leading-relaxed flex-1">
+                   <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed flex-1">
                      {project.objective || project.description || <span className="text-slate-400 italic">Não informado</span>}
                    </p>
                 </div>
 
-                <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 hover:border-green-200 hover:bg-green-50/30 transition-colors flex flex-col min-h-[220px] h-full">
-                   <div className="flex items-center gap-2 text-green-600 font-bold text-xs uppercase mb-3 pb-2 border-b border-green-100/50">
+                <div className="bg-slate-50 dark:bg-slate-700/50 p-5 rounded-xl border border-slate-100 dark:border-slate-600 hover:border-green-200 hover:bg-green-50/30 dark:hover:bg-green-900/20 transition-colors flex flex-col min-h-[220px] h-full">
+                   <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-bold text-xs uppercase mb-3 pb-2 border-b border-green-100/50 dark:border-green-900/50">
                      <TrendingUp size={14} /> Benefícios Esperados
                    </div>
-                   <p className="text-slate-700 text-sm leading-relaxed flex-1">
+                   <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed flex-1">
                      {project.benefits || <span className="text-slate-400 italic">Não informado</span>}
                    </p>
                 </div>
@@ -298,14 +299,14 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
 
             {/* Coluna da Direita: Card de Progresso (Ocupa Altura Total) */}
             <div className="lg:col-span-3">
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 h-full flex flex-col justify-center items-center relative overflow-hidden min-h-[250px]">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-600 shadow-sm p-6 h-full flex flex-col justify-center items-center relative overflow-hidden min-h-[250px]">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-brand-500"></div>
                 <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6">Progresso Geral</h3>
                 
                 <div className="relative w-40 h-40 flex items-center justify-center mb-6">
                   <svg className="w-full h-full" viewBox="0 0 100 100">
                     <circle
-                      className="text-slate-100 stroke-current"
+                      className="text-slate-100 dark:text-slate-700 stroke-current"
                       strokeWidth="8"
                       cx="50"
                       cy="50"
@@ -325,11 +326,11 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                       transform="rotate(-90 50 50)"
                     ></circle>
                   </svg>
-                  <span className="absolute text-4xl font-bold text-slate-800 tracking-tighter">{project.progress}%</span>
+                  <span className="absolute text-4xl font-bold text-slate-800 dark:text-white tracking-tighter">{project.progress}%</span>
                 </div>
                 
                 <div className="flex flex-col items-center">
-                    <p className="text-sm font-medium text-slate-600">
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
                     {project.activities.reduce((acc, curr) => acc + curr.subActivities.length, 0)} tarefas totais
                     </p>
                     <div className="flex gap-1 mt-2">
@@ -348,19 +349,19 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
         <div className="px-8 flex items-center gap-8 mt-2">
           <button 
             onClick={() => setActiveTab('list')}
-            className={`pb-4 px-2 flex items-center gap-2 text-sm font-bold border-b-[3px] transition-colors ${activeTab === 'list' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+            className={`pb-4 px-2 flex items-center gap-2 text-sm font-bold border-b-[3px] transition-colors ${activeTab === 'list' ? 'border-brand-600 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             <List size={18} /> Lista de Atividades
           </button>
           <button 
             onClick={() => setActiveTab('kanban')}
-            className={`pb-4 px-2 flex items-center gap-2 text-sm font-bold border-b-[3px] transition-colors ${activeTab === 'kanban' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+            className={`pb-4 px-2 flex items-center gap-2 text-sm font-bold border-b-[3px] transition-colors ${activeTab === 'kanban' ? 'border-brand-600 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             <Trello size={18} /> Quadro Kanban
           </button>
           <button 
             onClick={() => setActiveTab('recurrent')}
-            className={`pb-4 px-2 flex items-center gap-2 text-sm font-bold border-b-[3px] transition-colors ${activeTab === 'recurrent' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+            className={`pb-4 px-2 flex items-center gap-2 text-sm font-bold border-b-[3px] transition-colors ${activeTab === 'recurrent' ? 'border-brand-600 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             <Calendar size={18} /> Recorrência Mensal
           </button>
@@ -372,10 +373,10 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
         
         {/* TAB: LIST VIEW */}
         {activeTab === 'list' && (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left border-collapse">
-                <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
                   <tr>
                     <th className="px-6 py-4 font-bold tracking-wider w-[40%]">Atividade / Tarefa</th>
                     <th className="px-6 py-4 font-bold tracking-wider w-[20%]">Responsável</th>
@@ -383,24 +384,24 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                     <th className="px-6 py-4 font-bold tracking-wider w-[25%]">Fase DMAIC</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {project.activities.map(activity => {
                     const isExpanded = expandedActivities[activity.id] ?? true;
                     return (
                       <React.Fragment key={activity.id}>
                         {/* Activity Header Row */}
-                        <tr className="bg-slate-50 hover:bg-slate-100 transition-colors group border-b border-slate-200">
+                        <tr className="bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group border-b border-slate-200 dark:border-slate-600">
                           <td colSpan={4} className="px-4 py-3">
                             <div className="flex items-center justify-between">
                               <button 
                                 onClick={() => toggleActivity(activity.id)}
-                                className="flex items-center gap-3 text-slate-800 font-bold hover:text-brand-600 transition-colors text-base"
+                                className="flex items-center gap-3 text-slate-800 dark:text-slate-200 font-bold hover:text-brand-600 dark:hover:text-brand-400 transition-colors text-base"
                               >
-                                <div className="p-1 rounded hover:bg-slate-200 transition-colors">
-                                   {isExpanded ? <ChevronDown size={18} className="text-slate-500" /> : <ChevronRight size={18} className="text-slate-500" />}
+                                <div className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                                   {isExpanded ? <ChevronDown size={18} className="text-slate-500 dark:text-slate-400" /> : <ChevronRight size={18} className="text-slate-500 dark:text-slate-400" />}
                                 </div>
                                 {activity.name}
-                                <span className="text-xs font-semibold text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-full shadow-sm">
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 px-2 py-0.5 rounded-full shadow-sm">
                                   {activity.subActivities.length}
                                 </span>
                               </button>
@@ -417,19 +418,19 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
 
                         {/* Sub-Activities Rows */}
                         {isExpanded && activity.subActivities.map((sub) => (
-                          <tr key={sub.id} className="hover:bg-slate-50 transition-colors group/row">
+                          <tr key={sub.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group/row">
                             <td className="px-6 py-3 pl-16 relative">
                               {/* Connector Lines */}
-                              <div className="absolute left-[34px] top-0 bottom-0 w-px bg-slate-200" />
-                              <div className="absolute left-[34px] top-1/2 w-6 h-px bg-slate-200" />
-                              <span className="text-slate-700 font-medium">{sub.name}</span>
+                              <div className="absolute left-[34px] top-0 bottom-0 w-px bg-slate-200 dark:bg-slate-600" />
+                              <div className="absolute left-[34px] top-1/2 w-6 h-px bg-slate-200 dark:bg-slate-600" />
+                              <span className="text-slate-700 dark:text-slate-300 font-medium">{sub.name}</span>
                             </td>
                             <td className="px-6 py-3">
                               <div className="flex items-center gap-3">
-                                <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 text-xs flex items-center justify-center font-bold text-slate-600 shrink-0">
+                                <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-xs flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 shrink-0">
                                   {sub.responsible.substring(0, 1).toUpperCase()}
                                 </div>
-                                <span className="text-slate-600">{sub.responsible}</span>
+                                <span className="text-slate-600 dark:text-slate-300">{sub.responsible}</span>
                               </div>
                             </td>
                             <td className="px-6 py-3 text-center">
@@ -466,7 +467,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                     <tr>
                       <td colSpan={4} className="px-6 py-16 text-center text-slate-400">
                         <div className="flex flex-col items-center justify-center">
-                          <List size={48} className="text-slate-200 mb-4" />
+                          <List size={48} className="text-slate-200 dark:text-slate-700 mb-4" />
                           <p className="font-medium">Nenhuma atividade cadastrada.</p>
                           <p className="text-sm">Comece adicionando uma demanda principal abaixo.</p>
                         </div>
@@ -476,10 +477,10 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                 </tbody>
               </table>
             </div>
-             <div className="p-6 border-t border-slate-200 bg-slate-50 flex justify-center">
+             <div className="p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex justify-center">
               <button 
                 onClick={handleOpenNewActivity}
-                className="flex items-center text-sm font-bold text-brand-600 hover:text-white hover:bg-brand-600 bg-white border-2 border-brand-100 hover:border-brand-600 px-6 py-3 rounded-xl transition-all shadow-sm"
+                className="flex items-center text-sm font-bold text-brand-600 dark:text-brand-400 hover:text-white hover:bg-brand-600 bg-white dark:bg-slate-700 border-2 border-brand-100 dark:border-slate-600 hover:border-brand-600 px-6 py-3 rounded-xl transition-all shadow-sm"
               >
                 <Plus size={18} className="mr-2" />
                 Adicionar Nova Demanda Principal
@@ -495,15 +496,15 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
               const tasksInColumn = project.activities.flatMap(a => a.subActivities).filter(s => s.status === status);
               
               return (
-                <div key={status} className="flex-shrink-0 w-80 flex flex-col h-full rounded-2xl bg-slate-100 border border-slate-200 shadow-sm">
-                  <div className={`p-4 border-b border-slate-200 font-bold text-sm flex justify-between items-center rounded-t-2xl
-                    ${status === 'Concluído' ? 'text-green-800 bg-green-100/50 border-green-200' : ''}
-                    ${status === 'Bloqueado' ? 'text-red-800 bg-red-100/50 border-red-200' : ''}
-                    ${status === 'Em Andamento' ? 'text-blue-800 bg-blue-100/50 border-blue-200' : ''}
-                    ${status === 'Não Iniciado' ? 'text-slate-700 bg-white' : ''}
+                <div key={status} className="flex-shrink-0 w-80 flex flex-col h-full rounded-2xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 shadow-sm">
+                  <div className={`p-4 border-b border-slate-200 dark:border-slate-700 font-bold text-sm flex justify-between items-center rounded-t-2xl
+                    ${status === 'Concluído' ? 'text-green-800 bg-green-100/50 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800' : ''}
+                    ${status === 'Bloqueado' ? 'text-red-800 bg-red-100/50 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800' : ''}
+                    ${status === 'Em Andamento' ? 'text-blue-800 bg-blue-100/50 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800' : ''}
+                    ${status === 'Não Iniciado' ? 'text-slate-700 bg-white dark:bg-slate-700 dark:text-slate-300' : ''}
                   `}>
                     {status}
-                    <span className="bg-white/60 px-2 py-0.5 rounded-full text-xs border border-black/5 shadow-sm min-w-[24px] text-center">
+                    <span className="bg-white/60 dark:bg-black/20 px-2 py-0.5 rounded-full text-xs border border-black/5 shadow-sm min-w-[24px] text-center">
                       {tasksInColumn.length}
                     </span>
                   </div>
@@ -513,18 +514,18 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                       const parentActivity = project.activities.find(a => a.subActivities.some(s => s.id === task.id))?.name;
                       
                       return (
-                        <div key={task.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-brand-300 transition-all cursor-grab active:cursor-grabbing group">
-                          <div className="text-xs text-slate-400 mb-2 flex justify-between items-center border-b border-slate-50 pb-2">
+                        <div key={task.id} className="bg-white dark:bg-slate-700 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-600 hover:shadow-md hover:border-brand-300 dark:hover:border-brand-500 transition-all cursor-grab active:cursor-grabbing group">
+                          <div className="text-xs text-slate-400 mb-2 flex justify-between items-center border-b border-slate-50 dark:border-slate-600 pb-2">
                             <span className="truncate max-w-[120px]" title={parentActivity}>{parentActivity}</span>
                             <span className={`font-bold text-[10px] px-2 py-0.5 rounded-full ${DMAIC_COLORS[task.dmaic]}`}>{task.dmaic.split(' - ')[0]}</span>
                           </div>
-                          <p className="text-sm font-semibold text-slate-800 mb-4 leading-snug">{task.name}</p>
+                          <p className="text-sm font-semibold text-slate-800 dark:text-white mb-4 leading-snug">{task.name}</p>
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 bg-slate-50 px-2 py-1 rounded-lg">
-                              <div className="w-5 h-5 rounded-full bg-brand-100 text-brand-700 text-[10px] flex items-center justify-center font-bold">
+                            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-600 px-2 py-1 rounded-lg">
+                              <div className="w-5 h-5 rounded-full bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 text-[10px] flex items-center justify-center font-bold">
                                 {task.responsible.substring(0, 1)}
                               </div>
-                              <span className="text-xs font-medium text-slate-600 truncate max-w-[80px]">{task.responsible}</span>
+                              <span className="text-xs font-medium text-slate-600 dark:text-slate-300 truncate max-w-[80px]">{task.responsible}</span>
                             </div>
                           </div>
                         </div>
@@ -532,7 +533,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                     })}
                     {tasksInColumn.length === 0 && (
                       <div className="flex flex-col items-center justify-center h-32 text-slate-400 text-xs italic opacity-60">
-                         <div className="w-12 h-1 bg-slate-200 rounded-full mb-2"></div>
+                         <div className="w-12 h-1 bg-slate-200 dark:bg-slate-600 rounded-full mb-2"></div>
                          Vazio
                       </div>
                     )}
@@ -545,13 +546,13 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
 
         {/* TAB: RECURRENT (Matrix) */}
         {activeTab === 'recurrent' && (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-             <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-               <div className="flex items-center text-slate-800 font-bold">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+             <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-between">
+               <div className="flex items-center text-slate-800 dark:text-slate-200 font-bold">
                  <Clock className="mr-2 text-brand-600" size={20} />
                  Demandas Recorrentes | Controle Mensal
                </div>
-               <div className="flex gap-4 text-xs font-medium bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+               <div className="flex gap-4 text-xs font-medium bg-white dark:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 shadow-sm text-slate-600 dark:text-slate-300">
                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-blue-600 rounded-full"></div> Entregue (OK)</div>
                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div> Pendente (X)</div>
                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-slate-300 rounded-full"></div> N/A (-)</div>
@@ -562,9 +563,9 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                <table className="w-full text-center border-collapse">
                  <thead>
                    <tr>
-                     <th className="text-left p-4 min-w-[220px] border-b border-r border-slate-200 bg-slate-100/50 text-xs font-bold text-slate-500 uppercase tracking-wider">Tema / Atividade</th>
+                     <th className="text-left p-4 min-w-[220px] border-b border-r border-slate-200 dark:border-slate-600 bg-slate-100/50 dark:bg-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tema / Atividade</th>
                      {MONTHS.map((month, i) => (
-                       <th key={month} className="p-2 border-b border-r border-slate-200 bg-slate-100/50 text-xs font-bold text-slate-500 uppercase min-w-[50px]">
+                       <th key={month} className="p-2 border-b border-r border-slate-200 dark:border-slate-600 bg-slate-100/50 dark:bg-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase min-w-[50px]">
                          {month}
                        </th>
                      ))}
@@ -572,12 +573,12 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                  </thead>
                  <tbody>
                    {project.recurrentDemands.map((row) => (
-                     <tr key={row.id} className="hover:bg-slate-50 transition-colors">
-                       <td className="text-left p-4 border-b border-r border-slate-200 font-semibold text-slate-700 text-sm">
+                     <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                       <td className="text-left p-4 border-b border-r border-slate-200 dark:border-slate-600 font-semibold text-slate-700 dark:text-slate-300 text-sm">
                          {row.theme}
                        </td>
                        {row.data.map((cell, idx) => {
-                         let cellClass = "bg-white text-slate-300 hover:bg-slate-100"; // Default
+                         let cellClass = "bg-white dark:bg-slate-800 text-slate-300 dark:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700"; // Default
                          if (cell.status === 'OK') cellClass = "bg-blue-600 text-white hover:bg-blue-700 shadow-sm";
                          if (cell.status === 'X') cellClass = "bg-red-500 text-white hover:bg-red-600 shadow-sm";
                          if (cell.status === 'PENDING') cellClass = "bg-white text-blue-800 font-extrabold border-2 border-blue-600 inset-0";
@@ -586,7 +587,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                            <td 
                              key={`${row.id}-${idx}`} 
                              onClick={() => handleRecurrentToggle(row.id, idx)}
-                             className="p-1.5 border-b border-r border-slate-200 cursor-pointer h-12"
+                             className="p-1.5 border-b border-r border-slate-200 dark:border-slate-600 cursor-pointer h-12"
                            >
                              <div className={`w-full h-full flex items-center justify-center rounded-md text-[10px] font-bold transition-all duration-200 ${cellClass}`}>
                                {cell.status === 'PENDING' ? 'HOJE' : (cell.status === '-' ? '•' : cell.status)}
@@ -614,13 +615,13 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
       {/* MODAL: ADICIONAR ATIVIDADE / TAREFA */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-8">
-            <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl my-8">
+            <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 rounded-t-2xl">
               <div>
-                <h2 className="text-2xl font-bold text-slate-800">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
                   {targetActivity ? 'Nova Tarefa' : 'Nova Demanda Principal'}
                 </h2>
-                <p className="text-sm text-slate-500 mt-1">
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                   {targetActivity 
                     ? <span>Adicionando à: <strong className="text-brand-600">{targetActivity.name}</strong></span> 
                     : 'Crie um agrupamento de tarefas para organizar o projeto.'}
@@ -628,7 +629,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
               </div>
               <button 
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors"
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors"
               >
                 <X size={24} />
               </button>
@@ -656,9 +657,9 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
               )}
 
               {/* SEÇÃO DA TAREFA */}
-              <div className={!targetActivity ? "pt-4 border-t border-slate-100" : ""}>
+              <div className={!targetActivity ? "pt-4 border-t border-slate-100 dark:border-slate-700" : ""}>
                  {!targetActivity && (
-                    <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
                        <div className="w-1.5 h-1.5 rounded-full bg-brand-500"></div>
                        Primeira Tarefa
                     </h3>
@@ -701,7 +702,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                         name="deadline"
                         value={formData.deadline}
                         onChange={handleChange}
-                        className={inputClass}
+                        className={`${inputClass} dark:[color-scheme:dark]`}
                       />
                     </div>
                   </div>
@@ -749,17 +750,17 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                 </div>
               </div>
 
-              <div className="pt-6 flex items-center justify-end gap-3 border-t border-slate-100">
+              <div className="pt-6 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-700">
                 <button 
                   type="button" 
                   onClick={() => setIsModalOpen(false)}
-                  className="px-6 py-3 text-sm font-semibold text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl transition-colors"
+                  className="px-6 py-3 text-sm font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 rounded-xl transition-colors"
                 >
                   Cancelar
                 </button>
                 <button 
                   type="submit" 
-                  className="px-8 py-3 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl transition-colors shadow-lg shadow-brand-200 flex items-center"
+                  className="px-8 py-3 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl transition-colors shadow-lg shadow-brand-200 dark:shadow-none flex items-center"
                 >
                   <Save size={18} className="mr-2" />
                   Salvar
