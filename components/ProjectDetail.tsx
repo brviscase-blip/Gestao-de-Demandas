@@ -8,10 +8,11 @@ interface ProjectDetailProps {
   project: Project;
   onBack: () => void;
   onUpdateProject: (updatedProject: Project) => void;
+  onLocalUpdateProject: (updatedProject: Project) => void; // New prop
   onCreateDemand?: (data: any) => Promise<void>;
 }
 
-export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, onUpdateProject, onCreateDemand }) => {
+export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, onUpdateProject, onLocalUpdateProject, onCreateDemand }) => {
   const [activeTab, setActiveTab] = useState<'list' | 'kanban' | 'recurrent'>('list');
   const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
   
@@ -89,7 +90,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
 
     if (!currentTask) return;
 
-    // 3. Atualização Otimista (UI)
+    // 3. Atualização Otimista (UI) - USA onLocalUpdateProject
     const updatedActivities = project.activities.map(act => {
       if (act.id !== activityId) return act;
       return {
@@ -101,13 +102,14 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
       };
     });
     
-    onUpdateProject({ 
+    // ATUALIZA SÓ O LOCAL (Não dispara webhook de projeto)
+    onLocalUpdateProject({ 
         ...project, 
         activities: updatedActivities, 
         progress: calculateProgress(updatedActivities) 
     });
 
-    // 4. Envio para o Backend (N8N) com Debounce (15s)
+    // 4. Envio para o Backend (N8N - DEMANDAS) com Debounce (15s)
     if (onCreateDemand) {
         const uniqueKey = `${subActivityId}-${field}`;
 
@@ -166,6 +168,10 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
       newData[monthIndex] = { ...newData[monthIndex], status: nextStatus };
       return { ...rd, data: newData };
     });
+    
+    // Recurrent demands might still belong to Project JSON structure, so we keep onUpdateProject here
+    // or switch to onLocalUpdateProject if you plan to move them to a separate table too.
+    // For now, keeping as is based on instruction to only change Demands flow.
     onUpdateProject({ ...project, recurrentDemands: updatedRecurrent });
   };
 
@@ -188,6 +194,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
     const newActivityId = crypto.randomUUID();
     const newTaskId = crypto.randomUUID();
     
+    // 1. Envia para o N8N (Webhook de Demandas)
     if (onCreateDemand) {
         const webhookPayload = {
             projectId: project.id,
@@ -205,6 +212,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
         await onCreateDemand(webhookPayload);
     }
 
+    // 2. Atualiza Localmente (UI)
     let updatedActivities;
     if (targetActivity) {
         updatedActivities = project.activities.map(act => {
@@ -240,7 +248,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
         setExpandedActivities(prev => ({ ...prev, [newActivityId]: true }));
     }
     
-    onUpdateProject({ ...project, activities: updatedActivities, progress: calculateProgress(updatedActivities) });
+    // USA onLocalUpdateProject para não disparar webhook de projeto
+    onLocalUpdateProject({ ...project, activities: updatedActivities, progress: calculateProgress(updatedActivities) });
     setIsModalOpen(false);
   };
 
@@ -552,7 +561,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
           </div>
         )}
 
-        {/* Kanban Board */}
+        {/* Kanban Content... */}
         {activeTab === 'kanban' && (
           <div className="flex gap-6 overflow-x-auto h-full pb-4">
             {(['Não Iniciado', 'Em Andamento', 'Bloqueado', 'Concluído'] as TaskStatus[]).map(status => {
@@ -613,6 +622,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
 
         {activeTab === 'recurrent' && (
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+             {/* ... Recurrent content same as before ... */}
              <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-between">
                <div className="flex items-center text-slate-800 dark:text-slate-200 font-bold">
                  <Clock className="mr-2 text-brand-600" size={20} />

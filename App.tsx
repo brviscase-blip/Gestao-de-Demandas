@@ -185,14 +185,24 @@ const App: React.FC = () => {
     setActiveView('project-list');
   };
 
+  // Função para atualização completa (Visual + Webhook de Projeto)
+  // Usada quando editamos dados do PROJETO (Título, Objetivo, etc.)
   const handleUpdateProject = async (updatedProject: Project) => {
     // 1. Otimistic Update (UI)
     setProjects(prevProjects => 
       prevProjects.map(p => p.id === updatedProject.id ? updatedProject : p)
     );
 
-    // 2. Sync to Backend (N8N)
+    // 2. Sync to Backend (N8N - Projeto)
     await handleEditProject(updatedProject);
+  };
+
+  // Função SOMENTE para atualização LOCAL (Visual)
+  // Usada quando editamos DEMANDAS, pois o webhook de demandas é chamado separadamente
+  const handleLocalUpdateProject = (updatedProject: Project) => {
+    setProjects(prevProjects => 
+      prevProjects.map(p => p.id === updatedProject.id ? updatedProject : p)
+    );
   };
 
   // Nova função para enviar dados ao Webhook de Demandas
@@ -359,6 +369,7 @@ const App: React.FC = () => {
             project={selectedProject} 
             onBack={handleBackToProjects}
             onUpdateProject={handleUpdateProject}
+            onLocalUpdateProject={handleLocalUpdateProject} // Passando a nova função
             onCreateDemand={handleCreateDemand}
           />
         )}
