@@ -379,11 +379,12 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
 
                 {/* Data de Início */}
                 <div className="md:col-span-1">
-                  <label htmlFor="startDate" className={labelClass}>Data de Início</label>
+                  <label htmlFor="startDate" className={labelClass}>Data de Início <span className="text-brand-600">*</span></label>
                   <input 
                     type="date" 
                     id="startDate"
                     name="startDate"
+                    required
                     value={formData.startDate}
                     onChange={handleChange}
                     className={`${inputClass} dark:[color-scheme:dark]`}

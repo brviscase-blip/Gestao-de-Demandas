@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Project, SubActivity, TaskStatus, RecurrentMonthStatus, DMAICPhase } from '../types';
 import { MONTHS, STATUS_COLORS, DMAIC_COLORS } from '../constants';
@@ -759,12 +760,13 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                       />
                     </div>
                     <div>
-                      <label htmlFor="deadline" className={labelClass}>Prazo (Data)</label>
+                      <label htmlFor="deadline" className={labelClass}>Prazo (Data) <span className="text-brand-500">*</span></label>
                       <div className="relative">
                         <input 
                             type="date" 
                             id="deadline"
                             name="deadline"
+                            required
                             value={formData.deadline}
                             onChange={handleChange}
                             className={`${inputClass} dark:[color-scheme:dark] cursor-pointer`}
