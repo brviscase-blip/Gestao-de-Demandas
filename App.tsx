@@ -78,21 +78,28 @@ const App: React.FC = () => {
         const rawDemands = demandsData || [];
 
         const mappedProjects: Project[] = rawProjects.map((item: any) => {
-          const projectId = item.id || item.id_supabase;
+          // Normalização de ID do Projeto (Converte para String para consistência)
+          const projectId = String(item.id || item.id_supabase || item.ID || '');
 
-          // Filtrar demandas deste projeto específico
-          const projectDemands = rawDemands.filter((d: any) => 
-            d.id_projeto === projectId || d.project_id === projectId
-          );
+          // Filtrar demandas deste projeto específico (Case Insensitive Check)
+          const projectDemands = rawDemands.filter((d: any) => {
+             // Tenta pegar o ID do projeto na demanda em várias formatações
+             const demandProjectId = String(d.ID_Projeto || d.id_projeto || d.project_id || '');
+             return demandProjectId === projectId;
+          });
 
           // Agrupar demandas em Atividades (Agrupadores)
           const activitiesMap = new Map<string, Activity>();
 
           projectDemands.forEach((d: any) => {
-            // Tenta identificar o ID e Nome do Agrupador
-            // Prioriza campos em snake_case comuns no Supabase
-            const groupId = d.id_agrupador || d.activity_group_id || d.agrupador || 'default-group';
-            const groupName = d.nome_agrupador || d.agrupador || 'Geral';
+            // CORREÇÃO AQUI: Mapeando colunas exatas do CSV
+            // CSV: Titulo_Demanda (Agrupador)
+            // CSV: Demanda_Principal (Tarefa)
+            // CSV: Responsavel_ (Responsável com underline no final)
+            
+            // O nome do agrupador serve como ID do grupo, já que não temos ID específico no CSV
+            const groupName = d.Titulo_Demanda || d.titulo_demanda || 'Geral';
+            const groupId = groupName; // Usamos o nome como chave única do grupo dentro do projeto
 
             if (!activitiesMap.has(groupId)) {
               activitiesMap.set(groupId, {
@@ -104,14 +111,14 @@ const App: React.FC = () => {
 
             const activity = activitiesMap.get(groupId)!;
             
-            // Mapear a Tarefa (SubActivity)
+            // Mapear a Tarefa (SubActivity) usando as colunas corretas
             activity.subActivities.push({
-              id: d.id,
-              name: d.nome_tarefa || d.tarefa || d.descricao || 'Sem descrição',
-              responsible: d.responsavel || d.responsible || 'Não atribuído',
-              status: (d.status as TaskStatus) || 'Não Iniciado',
-              dmaic: (d.dmaic as DMAICPhase) || (d.fase_dmaic as DMAICPhase) || 'M - Mensurar',
-              deadline: d.prazo || d.deadline || undefined
+              id: String(d.id || d.ID),
+              name: d.Demanda_Principal || d.demanda_principal || d.Nome_Tarefa || 'Sem descrição',
+              responsible: d.Responsavel_ || d.responsavel_ || d.Responsavel || 'Não atribuído',
+              status: (d.Status || d.status) as TaskStatus || 'Não Iniciado',
+              dmaic: (d.DMAIC || d.dmaic) as DMAICPhase || 'M - Mensurar',
+              deadline: d.Data_Prazo || d.data_prazo || undefined
             });
           });
 
@@ -124,14 +131,14 @@ const App: React.FC = () => {
 
           return {
             id: projectId,
-            title: item.Nome_do_Projeto || item.nome_do_projeto || 'Sem Título',
-            type: item.Tipo_do_Projeto || item.tipo_do_projeto || 'Geral',
-            startDate: item.Data_de_Inicio || item.data_de_inicio || new Date().toISOString(),
+            title: item.Nome_do_Projeto || item.nome_do_projeto || item.title || 'Sem Título',
+            type: item.Tipo_do_Projeto || item.tipo_do_projeto || item.type || 'Geral',
+            startDate: item.Data_de_Inicio || item.data_de_inicio || item.startDate || new Date().toISOString(),
             justification: item.Justificativa || item.justificativa || '',
             objective: item.Objetivo || item.objetivo || '',
             benefits: item.Beneficios_Esperados || item.beneficios_esperados || '',
             description: item.Objetivo || item.objetivo || '', 
-            responsibleLead: item['Responsável_Principal'] || item['responsável_principal'] || item.Responsavel_Principal || 'Não atribuído',
+            responsibleLead: item['Responsável_Principal'] || item['responsável_principal'] || item.Responsavel_Principal || item.responsavel_principal || 'Não atribuído',
             progress: calculatedProgress, 
             status: item.status || 'Ativo',
             activities: Array.from(activitiesMap.values()),
