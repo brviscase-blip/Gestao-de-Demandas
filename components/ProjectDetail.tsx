@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Project, SubActivity, TaskStatus, RecurrentMonthStatus, DMAICPhase } from '../types';
 import { MONTHS, STATUS_COLORS, DMAIC_COLORS } from '../constants';
 import { ArrowLeft, Plus, Calendar, List, Trello, Clock, Target, TrendingUp, AlertTriangle, X, Save, ChevronDown, ChevronRight, User, CalendarDays, Tag, Activity, Briefcase } from 'lucide-react';
@@ -15,7 +15,13 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
   const [activeTab, setActiveTab] = useState<'list' | 'kanban' | 'recurrent'>('list');
   const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
   
-  // State for Task Modal
+  // Ref para armazenar os Timers de Debounce (Atraso no salvamento)
+  const debounceTimers = useRef<{ [key: string]: ReturnType<typeof setTimeout> }>({});
+
+  // State para controle de edição inline (Dirty Check)
+  const [originalValue, setOriginalValue] = useState<string | null>(null);
+
+  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [targetActivity, setTargetActivity] = useState<{id: string, name: string} | null>(null);
   
@@ -28,61 +34,121 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
     deadline: ''
   });
 
+  useEffect(() => {
+    return () => {
+      Object.values(debounceTimers.current).forEach(timer => clearTimeout(timer));
+    };
+  }, []);
+
   const toggleActivity = (id: string) => {
     setExpandedActivities(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // Helper function to calculate progress
   const calculateProgress = (activities: any[]) => {
     const allSubs = activities.flatMap(a => a.subActivities);
     const completed = allSubs.filter((s: any) => s.status === 'Concluído').length;
     return allSubs.length > 0 ? Math.round((completed / allSubs.length) * 100) : 0;
   };
 
-  // Helper to update a task status
-  const handleStatusChange = (activityId: string, subActivityId: string, newStatus: TaskStatus) => {
+  // ==================================================================================
+  // MASTER UPDATE FUNCTION 
+  // ==================================================================================
+  const handleTaskUpdate = async (
+    activityId: string, 
+    subActivityId: string, 
+    field: keyof SubActivity, 
+    newValue: string,
+    inputElement?: HTMLInputElement // Opcional: para resetar visualmente em caso de erro
+  ) => {
+    
+    // 1. Validação de Campo Vazio
+    if (!newValue || newValue.trim() === '') {
+        console.warn("Campo não pode ficar vazio. Revertendo...");
+        
+        // Se temos referência do elemento input, forçamos o valor de volta visualmente
+        if (inputElement && originalValue) {
+            inputElement.value = originalValue;
+            // Feedback visual de erro (vermelho rápido)
+            inputElement.classList.add('border-b-red-500', 'bg-red-50', 'dark:bg-red-900/20');
+            setTimeout(() => {
+                inputElement.classList.remove('border-b-red-500', 'bg-red-50', 'dark:bg-red-900/20');
+            }, 1000);
+        }
+        setOriginalValue(null);
+        return;
+    }
+
+    // 2. Verificação de Mudança (Dirty Check)
+    if (originalValue !== null && originalValue === newValue) {
+      setOriginalValue(null); 
+      return;
+    }
+
+    const currentActivity = project.activities.find(a => a.id === activityId);
+    const currentTask = currentActivity?.subActivities.find(s => s.id === subActivityId);
+
+    if (!currentTask) return;
+
+    // 3. Atualização Otimista (UI)
     const updatedActivities = project.activities.map(act => {
       if (act.id !== activityId) return act;
       return {
         ...act,
         subActivities: act.subActivities.map(sub => {
           if (sub.id !== subActivityId) return sub;
-          return { ...sub, status: newStatus };
+          return { ...sub, [field]: newValue };
         })
       };
     });
     
-    onUpdateProject({ ...project, activities: updatedActivities, progress: calculateProgress(updatedActivities) });
+    onUpdateProject({ 
+        ...project, 
+        activities: updatedActivities, 
+        progress: calculateProgress(updatedActivities) 
+    });
+
+    // 4. Envio para o Backend (N8N) com Debounce (15s)
+    if (onCreateDemand) {
+        const uniqueKey = `${subActivityId}-${field}`;
+
+        if (debounceTimers.current[uniqueKey]) {
+            clearTimeout(debounceTimers.current[uniqueKey]);
+        }
+
+        debounceTimers.current[uniqueKey] = setTimeout(() => {
+            console.log(`[DEBOUNCE] Enviando update após 15s: ${field} -> ${newValue}`);
+            
+            const payload = {
+                type: 'update_task',
+                projectId: project.id,
+                activityGroupId: activityId,
+                taskId: subActivityId,
+                taskName: field === 'name' ? newValue : currentTask.name,
+                responsible: field === 'responsible' ? newValue : currentTask.responsible,
+                status: field === 'status' ? newValue : currentTask.status,
+                dmaic: field === 'dmaic' ? newValue : currentTask.dmaic,
+                deadline: field === 'deadline' ? newValue : currentTask.deadline,
+                projectTitle: project.title,
+                activityGroupName: currentActivity?.name
+            };
+            
+            onCreateDemand(payload).catch(err => console.error("Erro N8N:", err));
+            delete debounceTimers.current[uniqueKey];
+
+        }, 15000); 
+    }
+
+    setOriginalValue(null);
   };
 
-  // Helper to update responsible inline
-  const handleResponsibleChange = (activityId: string, subActivityId: string, newResponsible: string) => {
-    const updatedActivities = project.activities.map(act => {
-      if (act.id !== activityId) return act;
-      return {
-        ...act,
-        subActivities: act.subActivities.map(sub => {
-          if (sub.id !== subActivityId) return sub;
-          return { ...sub, responsible: newResponsible };
-        })
-      };
-    });
-    onUpdateProject({ ...project, activities: updatedActivities });
+  const handleInputFocus = (value: string) => {
+    setOriginalValue(value);
   };
 
-  // Helper to update DMAIC inline
-  const handleDmaicChange = (activityId: string, subActivityId: string, newDmaic: DMAICPhase) => {
-    const updatedActivities = project.activities.map(act => {
-      if (act.id !== activityId) return act;
-      return {
-        ...act,
-        subActivities: act.subActivities.map(sub => {
-          if (sub.id !== subActivityId) return sub;
-          return { ...sub, dmaic: newDmaic };
-        })
-      };
-    });
-    onUpdateProject({ ...project, activities: updatedActivities });
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    }
   };
 
   const handleRecurrentToggle = (demandId: string, monthIndex: number) => {
@@ -103,44 +169,25 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
     onUpdateProject({ ...project, recurrentDemands: updatedRecurrent });
   };
 
-  // Modal Functions
+  // Modal Handlers
   const handleOpenNewActivity = () => {
     setTargetActivity(null);
-    setFormData({
-      activityName: '',
-      taskName: '',
-      responsible: 'Rafael',
-      dmaic: 'M - Mensurar',
-      status: 'Não Iniciado',
-      deadline: ''
-    });
+    setFormData({ activityName: '', taskName: '', responsible: 'Rafael', dmaic: 'M - Mensurar', status: 'Não Iniciado', deadline: '' });
     setIsModalOpen(true);
   };
 
   const handleOpenNewTask = (activityId: string, activityName: string) => {
-    // Ensure the activity is expanded when adding a task
     setExpandedActivities(prev => ({ ...prev, [activityId]: true }));
-    
     setTargetActivity({ id: activityId, name: activityName });
-    setFormData({
-      activityName: activityName,
-      taskName: '',
-      responsible: 'Rafael',
-      dmaic: 'I - Implementar',
-      status: 'Não Iniciado',
-      deadline: ''
-    });
+    setFormData({ activityName: activityName, taskName: '', responsible: 'Rafael', dmaic: 'I - Implementar', status: 'Não Iniciado', deadline: '' });
     setIsModalOpen(true);
   };
 
   const handleSaveTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Generate IDs upfront to use in webhook and local state
     const newActivityId = crypto.randomUUID();
     const newTaskId = crypto.randomUUID();
     
-    // 1. Send data to N8N Webhook (Cadastro_de_Demandas)
     if (onCreateDemand) {
         const webhookPayload = {
             projectId: project.id,
@@ -148,23 +195,18 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
             activityGroupId: targetActivity ? targetActivity.id : newActivityId,
             activityGroupName: targetActivity ? targetActivity.name : formData.activityName,
             taskId: newTaskId,
-            taskName: formData.taskName, // Description or Task Name
+            taskName: formData.taskName, 
             responsible: formData.responsible,
             dmaic: formData.dmaic,
             status: formData.status,
             deadline: formData.deadline,
             type: targetActivity ? 'new_task' : 'new_demand_group'
         };
-        
-        // Ensure webhook request is fired and awaited
         await onCreateDemand(webhookPayload);
     }
 
-    // 2. Update Local State (Optimistic UI)
     let updatedActivities;
-
     if (targetActivity) {
-        // Add task to existing activity
         updatedActivities = project.activities.map(act => {
             if (act.id === targetActivity.id) {
                 return {
@@ -182,7 +224,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
             return act;
         });
     } else {
-        // Create new activity + task
         const newActivity = {
             id: newActivityId,
             name: formData.activityName,
@@ -196,7 +237,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
             }]
         };
         updatedActivities = [...project.activities, newActivity];
-        // Auto expand new activity
         setExpandedActivities(prev => ({ ...prev, [newActivityId]: true }));
     }
     
@@ -214,9 +254,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900 relative transition-colors duration-300">
-      {/* Header Melhorado */}
+      {/* Header */}
       <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm z-10 transition-colors">
-        {/* Barra de Topo - Apenas Voltar */}
         <div className="px-8 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800">
             <button onClick={onBack} className="flex items-center text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-brand-600 transition-colors group">
               <ArrowLeft size={16} className="mr-2 group-hover:-translate-x-1 transition-transform" />
@@ -224,17 +263,10 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
             </button>
         </div>
 
-        {/* Área Principal do Header */}
         <div className="px-8 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-            
-            {/* Coluna da Esquerda: Título, Meta Info e Cards Estratégicos */}
             <div className="lg:col-span-9 flex flex-col gap-4">
-              
-              {/* LINHA 1: Título e Meta Dados em GRID */}
               <div className="grid grid-cols-12 gap-4">
-                
-                {/* Título - Ocupa 4 colunas (1/3) */}
                 <div className="col-span-12 xl:col-span-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-4 flex flex-col justify-center relative overflow-hidden group">
                    <div className="absolute top-0 left-0 w-1 h-full bg-brand-500"></div>
                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Projeto</span>
@@ -243,9 +275,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                    </h1>
                 </div>
 
-                {/* Meta Dados - Distribuidos no restante */}
-                
-                {/* Responsável */}
                 <div className="col-span-6 md:col-span-3 xl:col-span-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3 flex flex-col justify-center">
                    <div className="flex items-center gap-2 mb-1">
                       <User size={14} className="text-slate-400" />
@@ -256,7 +285,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                    </div>
                 </div>
 
-                {/* Data */}
                 <div className="col-span-6 md:col-span-3 xl:col-span-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3 flex flex-col justify-center">
                    <div className="flex items-center gap-2 mb-1">
                       <CalendarDays size={14} className="text-slate-400" />
@@ -267,7 +295,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                    </div>
                 </div>
 
-                {/* Status */}
                 <div className={`col-span-6 md:col-span-3 xl:col-span-2 border rounded-xl p-3 flex flex-col justify-center ${project.status === 'Ativo' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'}`}>
                    <div className="flex items-center gap-2 mb-1">
                       <Activity size={14} className={project.status === 'Ativo' ? 'text-green-500' : 'text-yellow-500'} />
@@ -278,7 +305,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                    </div>
                 </div>
 
-                {/* Tipo */}
                 <div className="col-span-6 md:col-span-3 xl:col-span-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3 flex flex-col justify-center">
                    <div className="flex items-center gap-2 mb-1">
                       <Tag size={14} className="text-slate-400" />
@@ -288,10 +314,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                       {project.type || 'Geral'}
                    </div>
                 </div>
-
               </div>
 
-              {/* LINHA 2: Cards Estratégicos (Aumentados) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
                 <div className="bg-slate-50 dark:bg-slate-700/50 p-5 rounded-xl border border-slate-100 dark:border-slate-600 hover:border-orange-200 hover:bg-orange-50/30 dark:hover:bg-orange-900/20 transition-colors flex flex-col min-h-[220px] h-full">
                    <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 font-bold text-xs uppercase mb-3 pb-2 border-b border-orange-100/50 dark:border-orange-900/50">
@@ -322,38 +346,17 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
               </div>
             </div>
 
-            {/* Coluna da Direita: Card de Progresso (Ocupa Altura Total) */}
             <div className="lg:col-span-3">
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-600 shadow-sm p-6 h-full flex flex-col justify-center items-center relative overflow-hidden min-h-[250px]">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-brand-500"></div>
                 <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6">Progresso Geral</h3>
-                
                 <div className="relative w-40 h-40 flex items-center justify-center mb-6">
                   <svg className="w-full h-full" viewBox="0 0 100 100">
-                    <circle
-                      className="text-slate-100 dark:text-slate-700 stroke-current"
-                      strokeWidth="8"
-                      cx="50"
-                      cy="50"
-                      r="42"
-                      fill="transparent"
-                    ></circle>
-                    <circle
-                      className="text-brand-500 progress-ring__circle stroke-current transition-all duration-1000 ease-out"
-                      strokeWidth="8"
-                      strokeLinecap="round"
-                      cx="50"
-                      cy="50"
-                      r="42"
-                      fill="transparent"
-                      strokeDasharray="263.89"
-                      strokeDashoffset={263.89 - (263.89 * project.progress) / 100}
-                      transform="rotate(-90 50 50)"
-                    ></circle>
+                    <circle className="text-slate-100 dark:text-slate-700 stroke-current" strokeWidth="8" cx="50" cy="50" r="42" fill="transparent"></circle>
+                    <circle className="text-brand-500 progress-ring__circle stroke-current transition-all duration-1000 ease-out" strokeWidth="8" strokeLinecap="round" cx="50" cy="50" r="42" fill="transparent" strokeDasharray="263.89" strokeDashoffset={263.89 - (263.89 * project.progress) / 100} transform="rotate(-90 50 50)"></circle>
                   </svg>
                   <span className="absolute text-4xl font-bold text-slate-800 dark:text-white tracking-tighter">{project.progress}%</span>
                 </div>
-                
                 <div className="flex flex-col items-center">
                     <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
                     {project.activities.reduce((acc, curr) => acc + curr.subActivities.length, 0)} tarefas totais
@@ -366,39 +369,26 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                 </div>
               </div>
             </div>
-
           </div>
         </div>
 
-        {/* Tabs de Navegação */}
         <div className="px-8 flex items-center gap-8 mt-2">
-          <button 
-            onClick={() => setActiveTab('list')}
-            className={`pb-4 px-2 flex items-center gap-2 text-sm font-bold border-b-[3px] transition-colors ${activeTab === 'list' ? 'border-brand-600 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
-          >
+          <button onClick={() => setActiveTab('list')} className={`pb-4 px-2 flex items-center gap-2 text-sm font-bold border-b-[3px] transition-colors ${activeTab === 'list' ? 'border-brand-600 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>
             <List size={18} /> Lista de Atividades
           </button>
-          <button 
-            onClick={() => setActiveTab('kanban')}
-            className={`pb-4 px-2 flex items-center gap-2 text-sm font-bold border-b-[3px] transition-colors ${activeTab === 'kanban' ? 'border-brand-600 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
-          >
+          <button onClick={() => setActiveTab('kanban')} className={`pb-4 px-2 flex items-center gap-2 text-sm font-bold border-b-[3px] transition-colors ${activeTab === 'kanban' ? 'border-brand-600 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>
             <Trello size={18} /> Quadro Kanban
           </button>
-          <button 
-            onClick={() => setActiveTab('recurrent')}
-            className={`pb-4 px-2 flex items-center gap-2 text-sm font-bold border-b-[3px] transition-colors ${activeTab === 'recurrent' ? 'border-brand-600 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
-          >
+          <button onClick={() => setActiveTab('recurrent')} className={`pb-4 px-2 flex items-center gap-2 text-sm font-bold border-b-[3px] transition-colors ${activeTab === 'recurrent' ? 'border-brand-600 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>
             <Calendar size={18} /> Recorrência Mensal
           </button>
         </div>
       </div>
 
-      {/* Content Area */}
       <div className="flex-1 p-8 overflow-auto custom-scrollbar">
         
-        {/* TAB: LIST VIEW (MONDAY.COM STYLE) */}
         {activeTab === 'list' && (
-          <div className="space-y-2 pb-20"> {/* COMPACTED SPACING */}
+          <div className="space-y-2 pb-20">
              {project.activities.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-16 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800">
                    <List size={48} className="text-slate-300 dark:text-slate-600 mb-4" />
@@ -410,9 +400,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                   const isExpanded = expandedActivities[activity.id] ?? true;
                   
                   return (
-                    <div key={activity.id} className="bg-white dark:bg-slate-800 rounded-md shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden"> {/* ROUNDED-MD */}
+                    <div key={activity.id} className="bg-white dark:bg-slate-800 rounded-md shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                        
-                       {/* Activity Group Header */}
                        <div 
                          className="flex items-center justify-between px-4 py-2 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/80 transition-colors border-l-4 border-l-brand-500"
                          onClick={() => toggleActivity(activity.id)}
@@ -436,11 +425,10 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                          </button>
                        </div>
 
-                       {/* Tasks Table */}
                        {isExpanded && (
                          <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left border-collapse">
-                              <thead className="text-xs font-bold text-slate-800 dark:text-white uppercase bg-slate-200 dark:bg-slate-900 border-y border-slate-300 dark:border-slate-600"> {/* IMPROVED HEADER VISIBILITY */}
+                              <thead className="text-xs font-bold text-slate-800 dark:text-white uppercase bg-slate-200 dark:bg-slate-900 border-y border-slate-300 dark:border-slate-600">
                                 <tr>
                                   <th className="px-4 py-3 font-bold w-[40%] pl-12 border-r border-slate-300 dark:border-slate-600">Tarefa</th>
                                   <th className="px-4 py-3 font-bold w-[15%] text-center border-r border-slate-300 dark:border-slate-600">Responsável</th>
@@ -452,39 +440,63 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                               <tbody className="divide-y divide-slate-200 dark:divide-slate-700/50 bg-white dark:bg-slate-800">
                                 {activity.subActivities.map(sub => (
                                   <tr key={sub.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
-                                     {/* Task Name */}
-                                     <td className="px-4 py-2 pl-12 border-r border-slate-300 dark:border-slate-600 relative h-10"> {/* VISIBLE BORDER */}
-                                        <div className="absolute left-6 top-1/2 -translate-y-1/2 w-full h-[1px] bg-slate-100 dark:bg-slate-700 -z-10"></div>
-                                        <span className="text-slate-700 dark:text-slate-200 font-medium truncate block">{sub.name}</span>
+                                     {/* Task Name - Editable Sutil (Clean Look) */}
+                                     <td className="px-4 py-0 pl-12 border-r border-slate-300 dark:border-slate-600 h-12 group-hover:bg-white dark:group-hover:bg-slate-700 transition-all">
+                                        <input
+                                          type="text"
+                                          defaultValue={sub.name}
+                                          onFocus={(e) => handleInputFocus(e.target.value)}
+                                          onBlur={(e) => handleTaskUpdate(activity.id, sub.id, 'name', e.target.value, e.target)}
+                                          onKeyDown={handleKeyDown}
+                                          className="w-full bg-transparent border-b-2 border-transparent focus:border-brand-500 text-slate-700 dark:text-slate-200 font-medium text-sm truncate p-1 h-full outline-none transition-colors"
+                                        />
                                      </td>
 
-                                     {/* Responsible */}
-                                     <td className="px-2 py-1 text-center border-r border-slate-300 dark:border-slate-600"> {/* VISIBLE BORDER */}
-                                        <div className="flex justify-center">
-                                           <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-200 text-xs font-bold flex items-center justify-center" title={sub.responsible}>
-                                              {sub.responsible.charAt(0).toUpperCase()}
+                                     {/* Responsible - Editable Sutil */}
+                                     <td className="px-2 py-0 text-center border-r border-slate-300 dark:border-slate-600 h-12 group-hover:bg-white dark:group-hover:bg-slate-700">
+                                        <div className="flex justify-center items-center h-full">
+                                           <div className="w-full max-w-[140px]">
+                                              <input
+                                                type="text"
+                                                defaultValue={sub.responsible}
+                                                onFocus={(e) => handleInputFocus(e.target.value)}
+                                                onBlur={(e) => handleTaskUpdate(activity.id, sub.id, 'responsible', e.target.value, e.target)}
+                                                onKeyDown={handleKeyDown}
+                                                className="w-full bg-transparent text-center text-sm font-medium text-slate-600 dark:text-slate-300 border-b-2 border-transparent focus:border-brand-500 outline-none transition-colors p-1"
+                                              />
                                            </div>
                                         </div>
                                      </td>
 
-                                     {/* Deadline */}
-                                     <td className="px-2 py-1 text-center border-r border-slate-300 dark:border-slate-600"> {/* VISIBLE BORDER */}
-                                        {sub.deadline ? (
-                                           <span className="text-xs text-slate-500 dark:text-slate-400 font-medium bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
-                                              {new Date(sub.deadline).toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'})}
-                                           </span>
-                                        ) : (
-                                           <span className="text-slate-300 dark:text-slate-600">-</span>
-                                        )}
+                                     {/* Deadline - Custom Badge Style (Clean & Consistent) */}
+                                     <td className="px-2 py-0 text-center border-r border-slate-300 dark:border-slate-600 h-12 group-hover:bg-white dark:group-hover:bg-slate-700">
+                                        <div className="flex justify-center items-center h-full">
+                                           <div className="relative flex items-center justify-center gap-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-md px-3 py-1.5 shadow-sm hover:border-brand-400 dark:hover:border-brand-500 transition-colors w-fit mx-auto cursor-pointer group/date">
+                                              <Calendar size={14} className="text-slate-400 group-hover/date:text-brand-500 transition-colors" />
+                                              <span className="text-sm font-medium text-slate-600 dark:text-slate-200">
+                                                {sub.deadline 
+                                                    ? new Date(sub.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).replace('.', '')
+                                                    : '-'}
+                                              </span>
+                                              {/* Invisible Input covering the whole badge */}
+                                              <input
+                                                  type="date"
+                                                  defaultValue={sub.deadline ? sub.deadline.split('T')[0] : ''}
+                                                  onFocus={(e) => handleInputFocus(e.target.value)}
+                                                  onBlur={(e) => handleTaskUpdate(activity.id, sub.id, 'deadline', e.target.value, e.target)}
+                                                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                                              />
+                                           </div>
+                                        </div>
                                      </td>
 
-                                     {/* Status (Badge Style with Border) */}
-                                     <td className={`p-0 h-full border-r border-slate-300 dark:border-slate-600 relative group-hover:border-slate-50 transition-colors`}>
+                                     {/* Status (Editable Select) */}
+                                     <td className={`p-0 h-12 border-r border-slate-300 dark:border-slate-600 relative group-hover:border-slate-50 transition-colors`}>
                                         <div className="w-full h-full flex items-center justify-center px-1">
                                           <select 
                                             value={sub.status}
-                                            onChange={(e) => handleStatusChange(activity.id, sub.id, e.target.value as TaskStatus)}
-                                            className={`w-full py-1 rounded text-center text-[10px] cursor-pointer appearance-none outline-none transition-colors ${STATUS_COLORS[sub.status]}`}
+                                            onChange={(e) => handleTaskUpdate(activity.id, sub.id, 'status', e.target.value)}
+                                            className={`w-full py-1 rounded text-center text-xs font-bold cursor-pointer appearance-none outline-none transition-colors ${STATUS_COLORS[sub.status]}`}
                                           >
                                             <option value="Não Iniciado" className="bg-white text-slate-800">Não Iniciado</option>
                                             <option value="Em Andamento" className="bg-white text-slate-800">Em Andamento</option>
@@ -494,13 +506,13 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                                         </div>
                                      </td>
 
-                                     {/* DMAIC (Badge Style with Border) */}
-                                     <td className={`p-0 h-full relative px-1`}>
+                                     {/* DMAIC (Editable Select) */}
+                                     <td className={`p-0 h-12 relative px-1`}>
                                          <div className="w-full h-full flex items-center justify-center">
                                             <select 
                                               value={sub.dmaic}
-                                              onChange={(e) => handleDmaicChange(activity.id, sub.id, e.target.value as DMAICPhase)}
-                                              className={`w-full py-1 rounded text-center text-[10px] cursor-pointer appearance-none outline-none transition-colors ${DMAIC_COLORS[sub.dmaic]}`}
+                                              onChange={(e) => handleTaskUpdate(activity.id, sub.id, 'dmaic', e.target.value)}
+                                              className={`w-full py-1 rounded text-center text-xs font-bold cursor-pointer appearance-none outline-none transition-colors ${DMAIC_COLORS[sub.dmaic]}`}
                                             >
                                               <option value="D - Definir" className="bg-white text-slate-800">Definir</option>
                                               <option value="M - Mensurar" className="bg-white text-slate-800">Mensurar</option>
@@ -528,27 +540,23 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                 })
              )}
              
-             {/* Add New Group Button - UPDATED STYLE (Header Bar Style) */}
              <div className="pt-2">
                 <button 
                   onClick={handleOpenNewActivity}
-                  className="w-full flex items-center gap-3 px-4 py-3 mt-4 bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg text-slate-500 dark:text-slate-400 font-bold hover:border-brand-500 hover:text-brand-600 dark:hover:border-brand-400 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/10 transition-all group"
+                  className="w-full flex items-center justify-center gap-2 py-3 mt-4 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-slate-500 dark:text-slate-400 font-bold hover:border-brand-500 hover:text-brand-600 dark:hover:border-brand-400 dark:hover:text-brand-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group"
                 >
-                   <div className="p-1 rounded bg-slate-100 dark:bg-slate-700 group-hover:bg-brand-100 dark:group-hover:bg-brand-900/30 transition-colors">
-                      <Plus size={20} />
-                   </div>
+                   <Plus size={20} className="group-hover:scale-110 transition-transform" />
                    <span>Adicionar Nova Demanda Principal</span>
                 </button>
              </div>
           </div>
         )}
 
-        {/* TAB: KANBAN VIEW */}
+        {/* Kanban Board */}
         {activeTab === 'kanban' && (
           <div className="flex gap-6 overflow-x-auto h-full pb-4">
             {(['Não Iniciado', 'Em Andamento', 'Bloqueado', 'Concluído'] as TaskStatus[]).map(status => {
               const tasksInColumn = project.activities.flatMap(a => a.subActivities).filter(s => s.status === status);
-              
               return (
                 <div key={status} className="flex-shrink-0 w-80 flex flex-col h-full rounded-2xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 shadow-sm">
                   <div className={`p-4 border-b border-slate-200 dark:border-slate-700 font-bold text-sm flex justify-between items-center rounded-t-2xl
@@ -564,9 +572,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                   </div>
                   <div className="p-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar">
                     {tasksInColumn.map(task => {
-                      // Find parent activity name for context
                       const parentActivity = project.activities.find(a => a.subActivities.some(s => s.id === task.id))?.name;
-                      
                       return (
                         <div key={task.id} className="bg-white dark:bg-slate-700 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-600 hover:shadow-md hover:border-brand-300 dark:hover:border-brand-500 transition-all cursor-grab active:cursor-grabbing group">
                           <div className="text-xs text-slate-400 mb-2 flex justify-between items-center border-b border-slate-50 dark:border-slate-600 pb-2">
@@ -605,7 +611,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
           </div>
         )}
 
-        {/* TAB: RECURRENT (Matrix) */}
         {activeTab === 'recurrent' && (
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
              <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-between">
@@ -639,7 +644,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                          {row.theme}
                        </td>
                        {row.data.map((cell, idx) => {
-                         let cellClass = "bg-white dark:bg-slate-800 text-slate-300 dark:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700"; // Default
+                         let cellClass = "bg-white dark:bg-slate-800 text-slate-300 dark:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700"; 
                          if (cell.status === 'OK') cellClass = "bg-blue-600 text-white hover:bg-blue-700 shadow-sm";
                          if (cell.status === 'X') cellClass = "bg-red-500 text-white hover:bg-red-600 shadow-sm";
                          if (cell.status === 'PENDING') cellClass = "bg-white text-blue-800 font-extrabold border-2 border-blue-600 inset-0";
@@ -671,9 +676,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
              </div>
           </div>
         )}
-      </div>
 
-      {/* MODAL: ADICIONAR ATIVIDADE / TAREFA */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl my-8">
@@ -697,8 +700,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
             </div>
             
             <form onSubmit={handleSaveTask} className="p-8 space-y-6">
-              
-              {/* Se for NOVA ATIVIDADE (Demanda Principal) */}
               {!targetActivity && (
                 <div>
                   <label htmlFor="activityName" className={labelClass}>Nome da Demanda (Agrupador) <span className="text-brand-500">*</span></label>
@@ -717,10 +718,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                 </div>
               )}
 
-              {/* SEÇÃO DA TAREFA / DESCRIÇÃO */}
               <div className={targetActivity ? "pt-4 border-t border-slate-100 dark:border-slate-700" : ""}>
-                 
-                 {/* Se for Adicionar Tarefa em existente, mostra título. Se for Nova Demanda, mostra sem borda, integrado */}
                  {targetActivity && (
                     <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
                        <div className="w-1.5 h-1.5 rounded-full bg-brand-500"></div>
@@ -729,7 +727,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                  )}
 
                 <div className="space-y-6">
-                  {/* Nome da Tarefa (Full Width) */}
                   <div>
                     <label htmlFor="taskName" className={labelClass}>
                        {targetActivity ? "O que deve ser feito? (Tarefa)" : "Descrição da Demanda / O que deve ser feito?"} <span className="text-brand-500">*</span>
@@ -746,7 +743,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                     />
                   </div>
 
-                  {/* Grid 2 Colunas: Responsável & Prazo */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label htmlFor="responsible" className={labelClass}>Responsável</label>
@@ -776,7 +772,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                     </div>
                   </div>
 
-                  {/* Grid 2 Colunas: DMAIC & Status */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label htmlFor="dmaic" className={labelClass}>Fase do DMAIC</label>
