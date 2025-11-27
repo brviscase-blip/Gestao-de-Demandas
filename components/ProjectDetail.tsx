@@ -155,8 +155,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
             type: targetActivity ? 'new_task' : 'new_demand_group'
         };
         
-        // Non-blocking or await based on preference. Using await ensures it's fired.
-        onCreateDemand(webhookPayload);
+        // Ensure webhook request is fired and awaited
+        await onCreateDemand(webhookPayload);
     }
 
     // 2. Update Local State (Optimistic UI)
