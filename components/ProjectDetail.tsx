@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Project, SubActivity, TaskStatus, RecurrentMonthStatus, DMAICPhase } from '../types';
 import { MONTHS, STATUS_COLORS, DMAIC_COLORS } from '../constants';
@@ -453,33 +452,37 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                                         )}
                                      </td>
 
-                                     {/* Status (Monday Style) */}
-                                     <td className={`p-0 h-full border-r border-slate-300 dark:border-slate-600 relative group-hover:border-slate-50 transition-colors`}> {/* VISIBLE BORDER */}
-                                        <select 
-                                          value={sub.status}
-                                          onChange={(e) => handleStatusChange(activity.id, sub.id, e.target.value as TaskStatus)}
-                                          className={`w-full h-10 text-center text-[11px] font-bold cursor-pointer appearance-none outline-none transition-colors ${STATUS_COLORS[sub.status]}`}
-                                        >
-                                          <option value="Não Iniciado" className="bg-white text-slate-800">Não Iniciado</option>
-                                          <option value="Em Andamento" className="bg-white text-slate-800">Em Andamento</option>
-                                          <option value="Concluído" className="bg-white text-slate-800">Concluído</option>
-                                          <option value="Bloqueado" className="bg-white text-slate-800">Bloqueado</option>
-                                        </select>
+                                     {/* Status (Badge Style with Border) */}
+                                     <td className={`p-0 h-full border-r border-slate-300 dark:border-slate-600 relative group-hover:border-slate-50 transition-colors`}>
+                                        <div className="w-full h-full flex items-center justify-center px-1">
+                                          <select 
+                                            value={sub.status}
+                                            onChange={(e) => handleStatusChange(activity.id, sub.id, e.target.value as TaskStatus)}
+                                            className={`w-full py-1 rounded text-center text-[10px] cursor-pointer appearance-none outline-none transition-colors ${STATUS_COLORS[sub.status]}`}
+                                          >
+                                            <option value="Não Iniciado" className="bg-white text-slate-800">Não Iniciado</option>
+                                            <option value="Em Andamento" className="bg-white text-slate-800">Em Andamento</option>
+                                            <option value="Concluído" className="bg-white text-slate-800">Concluído</option>
+                                            <option value="Bloqueado" className="bg-white text-slate-800">Bloqueado</option>
+                                          </select>
+                                        </div>
                                      </td>
 
-                                     {/* DMAIC (Monday Style) */}
-                                     <td className={`p-0 h-full relative`}>
-                                        <select 
-                                          value={sub.dmaic}
-                                          onChange={(e) => handleDmaicChange(activity.id, sub.id, e.target.value as DMAICPhase)}
-                                          className={`w-full h-10 text-center text-[11px] font-bold text-white cursor-pointer appearance-none outline-none transition-colors ${DMAIC_COLORS[sub.dmaic]}`}
-                                        >
-                                          <option value="D - Definir" className="bg-white text-slate-800">Definir</option>
-                                          <option value="M - Mensurar" className="bg-white text-slate-800">Mensurar</option>
-                                          <option value="A - Analisar" className="bg-white text-slate-800">Analisar</option>
-                                          <option value="I - Implementar" className="bg-white text-slate-800">Implementar</option>
-                                          <option value="C - Controlar" className="bg-white text-slate-800">Controlar</option>
-                                        </select>
+                                     {/* DMAIC (Badge Style with Border) */}
+                                     <td className={`p-0 h-full relative px-1`}>
+                                         <div className="w-full h-full flex items-center justify-center">
+                                            <select 
+                                              value={sub.dmaic}
+                                              onChange={(e) => handleDmaicChange(activity.id, sub.id, e.target.value as DMAICPhase)}
+                                              className={`w-full py-1 rounded text-center text-[10px] cursor-pointer appearance-none outline-none transition-colors ${DMAIC_COLORS[sub.dmaic]}`}
+                                            >
+                                              <option value="D - Definir" className="bg-white text-slate-800">Definir</option>
+                                              <option value="M - Mensurar" className="bg-white text-slate-800">Mensurar</option>
+                                              <option value="A - Analisar" className="bg-white text-slate-800">Analisar</option>
+                                              <option value="I - Implementar" className="bg-white text-slate-800">Implementar</option>
+                                              <option value="C - Controlar" className="bg-white text-slate-800">Controlar</option>
+                                            </select>
+                                        </div>
                                      </td>
                                   </tr>
                                 ))}
@@ -492,8 +495,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                                 )}
                               </tbody>
                             </table>
-                            
-                            {/* Input row for quick add could go here in future */}
                          </div>
                        )}
                     </div>
@@ -501,14 +502,16 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                 })
              )}
              
-             {/* Add New Group Button - Styled professionally */}
-             <div className="pt-4">
+             {/* Add New Group Button - UPDATED STYLE (Header Bar Style) */}
+             <div className="pt-2">
                 <button 
                   onClick={handleOpenNewActivity}
-                  className="w-full py-4 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-slate-500 dark:text-slate-400 font-bold hover:border-brand-500 hover:text-brand-600 dark:hover:border-brand-400 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/10 transition-all flex items-center justify-center gap-2"
+                  className="w-full flex items-center gap-3 px-4 py-3 mt-4 bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg text-slate-500 dark:text-slate-400 font-bold hover:border-brand-500 hover:text-brand-600 dark:hover:border-brand-400 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/10 transition-all group"
                 >
-                   <Plus size={20} />
-                   Adicionar Nova Demanda Principal
+                   <div className="p-1 rounded bg-slate-100 dark:bg-slate-700 group-hover:bg-brand-100 dark:group-hover:bg-brand-900/30 transition-colors">
+                      <Plus size={20} />
+                   </div>
+                   <span>Adicionar Nova Demanda Principal</span>
                 </button>
              </div>
           </div>
@@ -523,13 +526,13 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
               return (
                 <div key={status} className="flex-shrink-0 w-80 flex flex-col h-full rounded-2xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 shadow-sm">
                   <div className={`p-4 border-b border-slate-200 dark:border-slate-700 font-bold text-sm flex justify-between items-center rounded-t-2xl
-                    ${status === 'Concluído' ? 'text-white bg-emerald-500 border-emerald-600' : ''}
-                    ${status === 'Bloqueado' ? 'text-white bg-red-500 border-red-600' : ''}
-                    ${status === 'Em Andamento' ? 'text-white bg-blue-500 border-blue-600' : ''}
-                    ${status === 'Não Iniciado' ? 'text-slate-700 bg-slate-300 dark:bg-slate-600 dark:text-slate-200' : ''}
+                    ${status === 'Concluído' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : ''}
+                    ${status === 'Bloqueado' ? 'text-red-700 bg-red-50 border-red-200' : ''}
+                    ${status === 'Em Andamento' ? 'text-blue-700 bg-blue-50 border-blue-200' : ''}
+                    ${status === 'Não Iniciado' ? 'text-slate-700 bg-slate-200 dark:bg-slate-700 dark:text-slate-200' : ''}
                   `}>
                     {status}
-                    <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs shadow-sm min-w-[24px] text-center backdrop-blur-sm">
+                    <span className="bg-white/40 px-2 py-0.5 rounded-full text-xs shadow-sm min-w-[24px] text-center backdrop-blur-sm">
                       {tasksInColumn.length}
                     </span>
                   </div>
@@ -542,7 +545,9 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                         <div key={task.id} className="bg-white dark:bg-slate-700 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-600 hover:shadow-md hover:border-brand-300 dark:hover:border-brand-500 transition-all cursor-grab active:cursor-grabbing group">
                           <div className="text-xs text-slate-400 mb-2 flex justify-between items-center border-b border-slate-50 dark:border-slate-600 pb-2">
                             <span className="truncate max-w-[120px]" title={parentActivity}>{parentActivity}</span>
-                            <span className={`font-bold text-[10px] px-2 py-0.5 rounded-full text-white ${DMAIC_COLORS[task.dmaic].split(' ')[0]}`}>{task.dmaic.split(' - ')[0]}</span>
+                            <span className={`font-bold text-[10px] px-2 py-0.5 rounded text-center border ${DMAIC_COLORS[task.dmaic]}`}>
+                                {task.dmaic.split(' - ')[0]}
+                            </span>
                           </div>
                           <p className="text-sm font-semibold text-slate-800 dark:text-white mb-4 leading-snug">{task.name}</p>
                           <div className="flex items-center justify-between">
