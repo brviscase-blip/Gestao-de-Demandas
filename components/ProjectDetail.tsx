@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Project, SubActivity, TaskStatus, RecurrentMonthStatus, DMAICPhase } from '../types';
 import { MONTHS, STATUS_COLORS, DMAIC_COLORS } from '../constants';
-import { ArrowLeft, Plus, Calendar, List, Trello, Clock, Target, TrendingUp, AlertTriangle, X, Save, ChevronDown, ChevronRight, User, CalendarDays, Tag, Activity, Pencil, Settings } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, List, Trello, Clock, Target, TrendingUp, AlertTriangle, X, Save, ChevronDown, ChevronRight, User, CalendarDays, Tag, Activity, Pencil, Settings, ChevronUp } from 'lucide-react';
 
 interface ProjectDetailProps {
   project: Project;
@@ -15,6 +15,9 @@ interface ProjectDetailProps {
 export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, onUpdateProject, onLocalUpdateProject, onCreateDemand }) => {
   const [activeTab, setActiveTab] = useState<'list' | 'kanban' | 'recurrent'>('list');
   const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
+  
+  // Header State
+  const [isHeaderExpanded, setIsHeaderExpanded] = useState(true);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -232,18 +235,18 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
         </div>
 
         <div className="px-8 py-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-            <div className="lg:col-span-9 flex flex-col gap-4">
-              <div className="grid grid-cols-12 gap-4">
-                <div className="col-span-12 xl:col-span-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-4 flex flex-col justify-center relative overflow-hidden group">
+          <div className="flex flex-col gap-6">
+            {/* Top Row: Essential Info (Always Visible) */}
+            <div className="grid grid-cols-12 gap-4 items-stretch">
+                <div className="col-span-12 lg:col-span-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-4 flex flex-col justify-center relative overflow-hidden group">
                    <div className="absolute top-0 left-0 w-1 h-full bg-brand-500"></div>
                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Projeto</span>
-                   <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight truncate" title={project.title}>
+                   <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight truncate" title={project.title}>
                     {project.title}
                    </h1>
                 </div>
 
-                <div className="col-span-6 md:col-span-3 xl:col-span-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3 flex flex-col justify-center">
+                <div className="col-span-6 md:col-span-3 lg:col-span-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3 flex flex-col justify-center">
                    <div className="flex items-center gap-2 mb-1">
                       <User size={14} className="text-slate-400" />
                       <span className="text-[10px] font-bold text-slate-400 uppercase">Responsável</span>
@@ -253,7 +256,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                    </div>
                 </div>
 
-                <div className="col-span-6 md:col-span-3 xl:col-span-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3 flex flex-col justify-center">
+                <div className="col-span-6 md:col-span-3 lg:col-span-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3 flex flex-col justify-center">
                    <div className="flex items-center gap-2 mb-1">
                       <CalendarDays size={14} className="text-slate-400" />
                       <span className="text-[10px] font-bold text-slate-400 uppercase">Início</span>
@@ -263,7 +266,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                    </div>
                 </div>
 
-                <div className={`col-span-6 md:col-span-3 xl:col-span-2 border rounded-xl p-3 flex flex-col justify-center ${project.status === 'Ativo' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'}`}>
+                <div className={`col-span-6 md:col-span-3 lg:col-span-2 border rounded-xl p-3 flex flex-col justify-center ${project.status === 'Ativo' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'}`}>
                    <div className="flex items-center gap-2 mb-1">
                       <Activity size={14} className={project.status === 'Ativo' ? 'text-green-500' : 'text-yellow-500'} />
                       <span className={`text-[10px] font-bold uppercase ${project.status === 'Ativo' ? 'text-green-600/70 dark:text-green-400/70' : 'text-yellow-600/70 dark:text-yellow-400/70'}`}>Status</span>
@@ -273,7 +276,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                    </div>
                 </div>
 
-                <div className="col-span-6 md:col-span-3 xl:col-span-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3 flex flex-col justify-center">
+                <div className="col-span-6 md:col-span-3 lg:col-span-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3 flex flex-col justify-center">
                    <div className="flex items-center gap-2 mb-1">
                       <Tag size={14} className="text-slate-400" />
                       <span className="text-[10px] font-bold text-slate-400 uppercase">Tipo</span>
@@ -282,65 +285,84 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                       {project.type || 'Geral'}
                    </div>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
-                <div className="bg-slate-50 dark:bg-slate-700/50 p-5 rounded-xl border border-slate-100 dark:border-slate-600 hover:border-orange-200 hover:bg-orange-50/30 dark:hover:bg-orange-900/20 transition-colors flex flex-col min-h-[220px] h-full">
-                   <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 font-bold text-xs uppercase mb-3 pb-2 border-b border-orange-100/50 dark:border-orange-900/50">
-                     <AlertTriangle size={14} /> Justificativa (Problema)
-                   </div>
-                   <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed flex-1">
-                     {project.justification || <span className="text-slate-400 italic">Não informado</span>}
-                   </p>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-700/50 p-5 rounded-xl border border-slate-100 dark:border-slate-600 hover:border-blue-200 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors flex flex-col min-h-[220px] h-full">
-                   <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-xs uppercase mb-3 pb-2 border-b border-blue-100/50 dark:border-blue-900/50">
-                     <Target size={14} /> Objetivo (Solução)
-                   </div>
-                   <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed flex-1">
-                     {project.objective || project.description || <span className="text-slate-400 italic">Não informado</span>}
-                   </p>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-700/50 p-5 rounded-xl border border-slate-100 dark:border-slate-600 hover:border-green-200 hover:bg-green-50/30 dark:hover:bg-green-900/20 transition-colors flex flex-col min-h-[220px] h-full">
-                   <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-bold text-xs uppercase mb-3 pb-2 border-b border-green-100/50 dark:border-green-900/50">
-                     <TrendingUp size={14} /> Benefícios Esperados
-                   </div>
-                   <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed flex-1">
-                     {project.benefits || <span className="text-slate-400 italic">Não informado</span>}
-                   </p>
-                </div>
-              </div>
             </div>
 
-            <div className="lg:col-span-3">
-              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-600 shadow-sm p-6 h-full flex flex-col justify-center items-center relative overflow-hidden min-h-[250px]">
-                <div className="absolute top-0 left-0 w-full h-1.5 bg-brand-500"></div>
-                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6">Progresso Geral</h3>
-                <div className="relative w-40 h-40 flex items-center justify-center mb-6">
-                  <svg className="w-full h-full" viewBox="0 0 100 100">
-                    <circle className="text-slate-100 dark:text-slate-700 stroke-current" strokeWidth="8" cx="50" cy="50" r="42" fill="transparent"></circle>
-                    <circle className="text-brand-500 progress-ring__circle stroke-current transition-all duration-1000 ease-out" strokeWidth="8" strokeLinecap="round" cx="50" cy="50" r="42" fill="transparent" strokeDasharray="263.89" strokeDashoffset={263.89 - (263.89 * project.progress) / 100} transform="rotate(-90 50 50)"></circle>
-                  </svg>
-                  <span className="absolute text-4xl font-bold text-slate-800 dark:text-white tracking-tighter">{project.progress}%</span>
+            {/* Collapsible Details Section */}
+            {isHeaderExpanded && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch animate-fade-in">
+                <div className="lg:col-span-9 flex flex-col h-full">
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
+                      <div className="bg-slate-50 dark:bg-slate-700/50 p-5 rounded-xl border border-slate-100 dark:border-slate-600 hover:border-orange-200 hover:bg-orange-50/30 dark:hover:bg-orange-900/20 transition-colors flex flex-col min-h-[180px]">
+                        <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 font-bold text-xs uppercase mb-3 pb-2 border-b border-orange-100/50 dark:border-orange-900/50">
+                          <AlertTriangle size={14} /> Justificativa (Problema)
+                        </div>
+                        <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed flex-1">
+                          {project.justification || <span className="text-slate-400 italic">Não informado</span>}
+                        </p>
+                      </div>
+
+                      <div className="bg-slate-50 dark:bg-slate-700/50 p-5 rounded-xl border border-slate-100 dark:border-slate-600 hover:border-blue-200 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors flex flex-col min-h-[180px]">
+                        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-xs uppercase mb-3 pb-2 border-b border-blue-100/50 dark:border-blue-900/50">
+                          <Target size={14} /> Objetivo (Solução)
+                        </div>
+                        <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed flex-1">
+                          {project.objective || project.description || <span className="text-slate-400 italic">Não informado</span>}
+                        </p>
+                      </div>
+
+                      <div className="bg-slate-50 dark:bg-slate-700/50 p-5 rounded-xl border border-slate-100 dark:border-slate-600 hover:border-green-200 hover:bg-green-50/30 dark:hover:bg-green-900/20 transition-colors flex flex-col min-h-[180px]">
+                        <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-bold text-xs uppercase mb-3 pb-2 border-b border-green-100/50 dark:border-green-900/50">
+                          <TrendingUp size={14} /> Benefícios Esperados
+                        </div>
+                        <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed flex-1">
+                          {project.benefits || <span className="text-slate-400 italic">Não informado</span>}
+                        </p>
+                      </div>
+                   </div>
                 </div>
-                <div className="flex flex-col items-center">
-                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                    {project.activities.reduce((acc, curr) => acc + curr.subActivities.length, 0)} tarefas totais
-                    </p>
-                    <div className="flex gap-1 mt-2">
-                        <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
-                        <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
-                        <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
+
+                <div className="lg:col-span-3 h-full">
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-600 shadow-sm p-6 h-full flex flex-col justify-center items-center relative overflow-hidden min-h-[220px]">
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-brand-500"></div>
+                    <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">Progresso Geral</h3>
+                    <div className="relative w-32 h-32 flex items-center justify-center mb-4">
+                      <svg className="w-full h-full" viewBox="0 0 100 100">
+                        <circle className="text-slate-100 dark:text-slate-700 stroke-current" strokeWidth="8" cx="50" cy="50" r="42" fill="transparent"></circle>
+                        <circle className="text-brand-500 progress-ring__circle stroke-current transition-all duration-1000 ease-out" strokeWidth="8" strokeLinecap="round" cx="50" cy="50" r="42" fill="transparent" strokeDasharray="263.89" strokeDashoffset={263.89 - (263.89 * project.progress) / 100} transform="rotate(-90 50 50)"></circle>
+                      </svg>
+                      <span className="absolute text-3xl font-bold text-slate-800 dark:text-white tracking-tighter">{project.progress}%</span>
                     </div>
+                    <div className="flex flex-col items-center">
+                        <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                        {project.activities.reduce((acc, curr) => acc + curr.subActivities.length, 0)} tarefas totais
+                        </p>
+                    </div>
+                  </div>
                 </div>
               </div>
+            )}
+            
+            {/* Toggle Button */}
+            <div className="flex justify-center -mt-2">
+               <button 
+                  onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}
+                  className="flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-brand-600 transition-all hover:bg-slate-100 dark:hover:bg-slate-700/50 px-3 py-1.5 rounded-full"
+               >
+                  {isHeaderExpanded ? (
+                    <>
+                      <ChevronUp size={14} /> Recolher Detalhes
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown size={14} /> Ver Detalhes Completos
+                    </>
+                  )}
+               </button>
             </div>
           </div>
         </div>
 
-        <div className="px-8 flex items-center gap-8 mt-2">
+        <div className="px-8 flex items-center gap-8 mt-1">
           <button onClick={() => setActiveTab('list')} className={`pb-4 px-2 flex items-center gap-2 text-sm font-bold border-b-[3px] transition-colors ${activeTab === 'list' ? 'border-brand-600 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>
             <List size={18} /> Lista de Atividades
           </button>
@@ -409,9 +431,9 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                               <tbody className="divide-y divide-slate-200 dark:divide-slate-700/50 bg-white dark:bg-slate-800">
                                 {activity.subActivities.map(sub => (
                                   <tr key={sub.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
-                                     {/* Task Name - Increased Font Size */}
+                                     {/* Task Name - Increased Font Size to 15px as requested */}
                                      <td className="px-4 py-3 pl-12 border-r border-slate-300 dark:border-slate-600">
-                                        <span className="text-base font-medium text-slate-900 dark:text-slate-100 block truncate" title={sub.name}>
+                                        <span className="text-[15px] font-medium text-slate-900 dark:text-slate-100 block truncate" title={sub.name}>
                                             {sub.name}
                                         </span>
                                      </td>
@@ -442,7 +464,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                                         </span>
                                      </td>
 
-                                     {/* DMAIC - Full Name & Improved Badge Style */}
+                                     {/* DMAIC - Full Name */}
                                      <td className="px-4 py-3 text-center border-r border-slate-300 dark:border-slate-600">
                                         <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border ${DMAIC_COLORS[sub.dmaic]}`}>
                                             {sub.dmaic}
