@@ -8,7 +8,7 @@ interface ProjectDetailProps {
   project: Project;
   onBack: () => void;
   onUpdateProject: (updatedProject: Project) => void;
-  onLocalUpdateProject: (updatedProject: Project) => void; // New prop
+  onLocalUpdateProject: (updatedProject: Project) => void;
   onCreateDemand?: (data: any) => Promise<void>;
 }
 
@@ -169,9 +169,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
       return { ...rd, data: newData };
     });
     
-    // Recurrent demands might still belong to Project JSON structure, so we keep onUpdateProject here
-    // or switch to onLocalUpdateProject if you plan to move them to a separate table too.
-    // For now, keeping as is based on instruction to only change Demands flow.
     onUpdateProject({ ...project, recurrentDemands: updatedRecurrent });
   };
 
@@ -561,7 +558,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
           </div>
         )}
 
-        {/* Kanban Content... */}
+        {/* Kanban Content */}
         {activeTab === 'kanban' && (
           <div className="flex gap-6 overflow-x-auto h-full pb-4">
             {(['Não Iniciado', 'Em Andamento', 'Bloqueado', 'Concluído'] as TaskStatus[]).map(status => {
@@ -620,9 +617,9 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
           </div>
         )}
 
+        {/* Recurrent Content */}
         {activeTab === 'recurrent' && (
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-             {/* ... Recurrent content same as before ... */}
              <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-between">
                <div className="flex items-center text-slate-800 dark:text-slate-200 font-bold">
                  <Clock className="mr-2 text-brand-600" size={20} />
