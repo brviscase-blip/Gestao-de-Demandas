@@ -5,7 +5,7 @@ import { Dashboard } from './components/Dashboard';
 import { ProjectList } from './components/ProjectList';
 import { ProjectDetail } from './components/ProjectDetail';
 import { N8N_WEBHOOK_URL, N8N_WEBHOOK_DEMANDS_URL } from './constants';
-import { Project } from './types';
+import { Project, Activity, SubActivity, TaskStatus, DMAICPhase } from './types';
 import { supabase } from './supabaseClient';
 import { Loader2 } from 'lucide-react';
 
@@ -54,18 +54,76 @@ const App: React.FC = () => {
       
       console.log('Iniciando busca no Supabase...');
 
-      const { data, error } = await supabase
+      // 1. Buscar Projetos
+      const { data: projectsData, error: projectsError } = await supabase
         .from('Cadastro_de_Projetos')
         .select('*');
 
-      if (error) {
-        console.error('Erro detalhado do Supabase:', JSON.stringify(error, null, 2));
-        alert(`Erro ao conectar no banco: ${error.message}`);
+      // 2. Buscar Demandas (Tarefas)
+      const { data: demandsData, error: demandsError } = await supabase
+        .from('Cadastro_de_Demandas')
+        .select('*');
+
+      if (projectsError) {
+        console.error('Erro ao buscar projetos:', JSON.stringify(projectsError, null, 2));
+        alert(`Erro ao conectar no banco (Projetos): ${projectsError.message}`);
         setProjects([]);
-      } else if (data) {
-        const mappedProjects: Project[] = data.map((item: any) => {
+      } else {
+        // Se houver erro nas demandas, apenas loga, mas carrega os projetos
+        if (demandsError) {
+          console.error('Erro ao buscar demandas:', JSON.stringify(demandsError, null, 2));
+        }
+
+        const rawProjects = projectsData || [];
+        const rawDemands = demandsData || [];
+
+        const mappedProjects: Project[] = rawProjects.map((item: any) => {
+          const projectId = item.id || item.id_supabase;
+
+          // Filtrar demandas deste projeto específico
+          const projectDemands = rawDemands.filter((d: any) => 
+            d.id_projeto === projectId || d.project_id === projectId
+          );
+
+          // Agrupar demandas em Atividades (Agrupadores)
+          const activitiesMap = new Map<string, Activity>();
+
+          projectDemands.forEach((d: any) => {
+            // Tenta identificar o ID e Nome do Agrupador
+            // Prioriza campos em snake_case comuns no Supabase
+            const groupId = d.id_agrupador || d.activity_group_id || d.agrupador || 'default-group';
+            const groupName = d.nome_agrupador || d.agrupador || 'Geral';
+
+            if (!activitiesMap.has(groupId)) {
+              activitiesMap.set(groupId, {
+                id: groupId,
+                name: groupName,
+                subActivities: []
+              });
+            }
+
+            const activity = activitiesMap.get(groupId)!;
+            
+            // Mapear a Tarefa (SubActivity)
+            activity.subActivities.push({
+              id: d.id,
+              name: d.nome_tarefa || d.tarefa || d.descricao || 'Sem descrição',
+              responsible: d.responsavel || d.responsible || 'Não atribuído',
+              status: (d.status as TaskStatus) || 'Não Iniciado',
+              dmaic: (d.dmaic as DMAICPhase) || (d.fase_dmaic as DMAICPhase) || 'M - Mensurar',
+              deadline: d.prazo || d.deadline || undefined
+            });
+          });
+
+          // Calcular progresso baseado nas demandas carregadas
+          const allTasks = Array.from(activitiesMap.values()).flatMap(a => a.subActivities);
+          const completedTasks = allTasks.filter(t => t.status === 'Concluído').length;
+          const calculatedProgress = allTasks.length > 0 
+            ? Math.round((completedTasks / allTasks.length) * 100) 
+            : (item.progresso || item.progress || 0);
+
           return {
-            id: item.id || crypto.randomUUID(),
+            id: projectId,
             title: item.Nome_do_Projeto || item.nome_do_projeto || 'Sem Título',
             type: item.Tipo_do_Projeto || item.tipo_do_projeto || 'Geral',
             startDate: item.Data_de_Inicio || item.data_de_inicio || new Date().toISOString(),
@@ -74,12 +132,13 @@ const App: React.FC = () => {
             benefits: item.Beneficios_Esperados || item.beneficios_esperados || '',
             description: item.Objetivo || item.objetivo || '', 
             responsibleLead: item['Responsável_Principal'] || item['responsável_principal'] || item.Responsavel_Principal || 'Não atribuído',
-            progress: 0, 
-            status: 'Ativo',
-            activities: [],
-            recurrentDemands: []
+            progress: calculatedProgress, 
+            status: item.status || 'Ativo',
+            activities: Array.from(activitiesMap.values()),
+            recurrentDemands: [] // Recorrências ainda podem ser implementadas se houver tabela específica
           };
         });
+
         setProjects(mappedProjects);
       }
     } catch (err) {
