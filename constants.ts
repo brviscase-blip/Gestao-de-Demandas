@@ -6,6 +6,7 @@ import { Project, TaskStatus } from './types';
 // Cole aqui a URL do seu Webhook do n8n (Método POST)
 // Exemplo: 'https://seu-n8n.com/webhook/criar-projeto'
 export const N8N_WEBHOOK_URL = 'https://projeto-teste-n8n.ly7t0m.easypanel.host/webhook/Cadastro_de_Projetos';
+export const N8N_WEBHOOK_DEMANDS_URL = 'https://projeto-teste-n8n.ly7t0m.easypanel.host/webhook-test/Cadastro_de_Demandas';
 
 export const MONTHS = [
   'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 

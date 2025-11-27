@@ -7,9 +7,10 @@ interface ProjectDetailProps {
   project: Project;
   onBack: () => void;
   onUpdateProject: (updatedProject: Project) => void;
+  onCreateDemand?: (data: any) => Promise<void>;
 }
 
-export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, onUpdateProject }) => {
+export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, onUpdateProject, onCreateDemand }) => {
   const [activeTab, setActiveTab] = useState<'list' | 'kanban' | 'recurrent'>('list');
   const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
   
@@ -131,9 +132,34 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
     setIsModalOpen(true);
   };
 
-  const handleSaveTask = (e: React.FormEvent) => {
+  const handleSaveTask = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Generate IDs upfront to use in webhook and local state
+    const newActivityId = crypto.randomUUID();
+    const newTaskId = crypto.randomUUID();
+    
+    // 1. Send data to N8N Webhook (Cadastro_de_Demandas)
+    if (onCreateDemand) {
+        const webhookPayload = {
+            projectId: project.id,
+            projectTitle: project.title,
+            activityGroupId: targetActivity ? targetActivity.id : newActivityId,
+            activityGroupName: targetActivity ? targetActivity.name : formData.activityName,
+            taskId: newTaskId,
+            taskName: formData.taskName, // Description or Task Name
+            responsible: formData.responsible,
+            dmaic: formData.dmaic,
+            status: formData.status,
+            deadline: formData.deadline,
+            type: targetActivity ? 'new_task' : 'new_demand_group'
+        };
+        
+        // Non-blocking or await based on preference. Using await ensures it's fired.
+        onCreateDemand(webhookPayload);
+    }
+
+    // 2. Update Local State (Optimistic UI)
     let updatedActivities;
 
     if (targetActivity) {
@@ -143,7 +169,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                 return {
                     ...act,
                     subActivities: [...act.subActivities, {
-                        id: crypto.randomUUID(),
+                        id: newTaskId,
                         name: formData.taskName,
                         responsible: formData.responsible,
                         dmaic: formData.dmaic,
@@ -156,12 +182,11 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
         });
     } else {
         // Create new activity + task
-        const newId = crypto.randomUUID();
         const newActivity = {
-            id: newId,
+            id: newActivityId,
             name: formData.activityName,
             subActivities: [{
-                id: crypto.randomUUID(),
+                id: newTaskId,
                 name: formData.taskName,
                 responsible: formData.responsible,
                 dmaic: formData.dmaic,
@@ -171,7 +196,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
         };
         updatedActivities = [...project.activities, newActivity];
         // Auto expand new activity
-        setExpandedActivities(prev => ({ ...prev, [newId]: true }));
+        setExpandedActivities(prev => ({ ...prev, [newActivityId]: true }));
     }
     
     onUpdateProject({ ...project, activities: updatedActivities, progress: calculateProgress(updatedActivities) });

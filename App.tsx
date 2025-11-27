@@ -4,7 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { ProjectList } from './components/ProjectList';
 import { ProjectDetail } from './components/ProjectDetail';
-import { N8N_WEBHOOK_URL } from './constants';
+import { N8N_WEBHOOK_URL, N8N_WEBHOOK_DEMANDS_URL } from './constants';
 import { Project } from './types';
 import { supabase } from './supabaseClient';
 import { Loader2 } from 'lucide-react';
@@ -106,8 +106,34 @@ const App: React.FC = () => {
     );
 
     // 2. Sync to Backend (N8N)
-    // Chamamos a função de edição que já possui a lógica de enviar para o Webhook
+    // Chamamos a função de edição que já possui a lógica de enviar para o Webhook de Projetos
     await handleEditProject(updatedProject);
+  };
+
+  // Nova função para enviar dados ao Webhook de Demandas
+  const handleCreateDemand = async (demandData: any) => {
+    try {
+      if (N8N_WEBHOOK_DEMANDS_URL) {
+        console.log("Enviando demanda para N8N:", demandData);
+        const response = await fetch(N8N_WEBHOOK_DEMANDS_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(demandData),
+        });
+
+        if (!response.ok) {
+          console.error(`Erro ao enviar demanda para N8N: ${response.statusText}`);
+        } else {
+          console.log("Demanda enviada com sucesso para N8N");
+        }
+      } else {
+        console.warn("URL do Webhook de Demandas não configurada.");
+      }
+    } catch (error) {
+      console.error("Erro ao enviar demanda para N8N:", error);
+    }
   };
 
   const handleAddProject = async (newProject: Project): Promise<boolean> => {
@@ -250,6 +276,7 @@ const App: React.FC = () => {
             project={selectedProject} 
             onBack={handleBackToProjects}
             onUpdateProject={handleUpdateProject}
+            onCreateDemand={handleCreateDemand}
           />
         )}
       </main>
