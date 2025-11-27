@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Project, SubActivity, TaskStatus, RecurrentMonthStatus, DMAICPhase } from '../types';
 import { MONTHS, STATUS_COLORS, DMAIC_COLORS } from '../constants';
-import { ArrowLeft, Plus, Calendar, List, Trello, Clock, Target, TrendingUp, AlertTriangle, X, Save, ChevronDown, ChevronRight, User, CalendarDays, Tag, Activity } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, List, Trello, Clock, Target, TrendingUp, AlertTriangle, X, Save, ChevronDown, ChevronRight, User, CalendarDays, Tag, Activity, Pencil, Settings } from 'lucide-react';
 
 interface ProjectDetailProps {
   project: Project;
@@ -14,16 +15,13 @@ interface ProjectDetailProps {
 export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, onUpdateProject, onLocalUpdateProject, onCreateDemand }) => {
   const [activeTab, setActiveTab] = useState<'list' | 'kanban' | 'recurrent'>('list');
   const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
-  
-  // Ref para armazenar os Timers de Debounce (Atraso no salvamento)
-  const debounceTimers = useRef<{ [key: string]: ReturnType<typeof setTimeout> }>({});
-
-  // State para controle de edição inline (Dirty Check)
-  const [originalValue, setOriginalValue] = useState<string | null>(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  // targetActivity serve para saber o PAI (Activity) da tarefa sendo criada/editada
   const [targetActivity, setTargetActivity] = useState<{id: string, name: string} | null>(null);
+  // editingTask serve para saber se estamos EDITANDO uma tarefa específica
+  const [editingTask, setEditingTask] = useState<{id: string} | null>(null);
   
   const [formData, setFormData] = useState({
     activityName: '',
@@ -34,13 +32,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
     deadline: ''
   });
 
-  useEffect(() => {
-    return () => {
-      // Cast timer to any to handle potential type mismatch between NodeJS.Timeout and number
-      Object.values(debounceTimers.current).forEach(timer => clearTimeout(timer as any));
-    };
-  }, []);
-
   const toggleActivity = (id: string) => {
     setExpandedActivities(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -49,104 +40,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
     const allSubs = activities.flatMap(a => a.subActivities);
     const completed = allSubs.filter((s: any) => s.status === 'Concluído').length;
     return allSubs.length > 0 ? Math.round((completed / allSubs.length) * 100) : 0;
-  };
-
-  // ==================================================================================
-  // MASTER UPDATE FUNCTION 
-  // ==================================================================================
-  const handleTaskUpdate = async (
-    activityId: string, 
-    subActivityId: string, 
-    field: keyof SubActivity, 
-    newValue: string,
-    inputElement?: HTMLInputElement
-  ) => {
-    
-    // 1. Validação de Campo Vazio
-    if (!newValue || newValue.trim() === '') {
-        console.warn("Campo não pode ficar vazio. Revertendo...");
-        if (inputElement && originalValue) {
-            inputElement.value = originalValue;
-            inputElement.classList.add('border-b-red-500', 'bg-red-50', 'dark:bg-red-900/20');
-            setTimeout(() => {
-                inputElement.classList.remove('border-b-red-500', 'bg-red-50', 'dark:bg-red-900/20');
-            }, 1000);
-        }
-        setOriginalValue(null);
-        return;
-    }
-
-    // 2. Verificação de Mudança (Dirty Check)
-    if (originalValue !== null && originalValue === newValue) {
-      setOriginalValue(null); 
-      return;
-    }
-
-    const currentActivity = project.activities.find(a => a.id === activityId);
-    const currentTask = currentActivity?.subActivities.find(s => s.id === subActivityId);
-
-    if (!currentTask) return;
-
-    // 3. Atualização Otimista (UI)
-    const updatedActivities = project.activities.map(act => {
-      if (act.id !== activityId) return act;
-      return {
-        ...act,
-        subActivities: act.subActivities.map(sub => {
-          if (sub.id !== subActivityId) return sub;
-          return { ...sub, [field]: newValue };
-        })
-      };
-    });
-    
-    onLocalUpdateProject({ 
-        ...project, 
-        activities: updatedActivities, 
-        progress: calculateProgress(updatedActivities) 
-    });
-
-    // 4. Envio para o Backend (N8N) com Debounce
-    if (onCreateDemand) {
-        const uniqueKey = `${subActivityId}-${field}`;
-
-        if (debounceTimers.current[uniqueKey]) {
-            clearTimeout(debounceTimers.current[uniqueKey]);
-        }
-
-        debounceTimers.current[uniqueKey] = setTimeout(() => {
-            console.log(`[DEBOUNCE] Enviando update após 15s: ${field} -> ${newValue}`);
-            
-            const payload = {
-                type: 'update_task',
-                projectId: project.id,
-                activityGroupId: activityId,
-                taskId: subActivityId,
-                taskName: field === 'name' ? newValue : currentTask.name,
-                responsible: field === 'responsible' ? newValue : currentTask.responsible,
-                status: field === 'status' ? newValue : currentTask.status,
-                dmaic: field === 'dmaic' ? newValue : currentTask.dmaic,
-                deadline: field === 'deadline' ? newValue : currentTask.deadline,
-                projectTitle: project.title,
-                activityGroupName: currentActivity?.name
-            };
-            
-            onCreateDemand(payload).catch(err => console.error("Erro N8N:", err));
-            delete debounceTimers.current[uniqueKey];
-
-        }, 15000); 
-    }
-
-    setOriginalValue(null);
-  };
-
-  const handleInputFocus = (value: string) => {
-    setOriginalValue(value);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.currentTarget.blur();
-    }
   };
 
   const handleRecurrentToggle = (demandId: string, monthIndex: number) => {
@@ -167,78 +60,155 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
     onUpdateProject({ ...project, recurrentDemands: updatedRecurrent });
   };
 
-  // Modal Handlers
+  // ==========================================================
+  // MODAL HANDLERS (Create & Edit)
+  // ==========================================================
+
+  // 1. Abrir Modal para NOVA DEMANDA PRINCIPAL (Grupo)
   const handleOpenNewActivity = () => {
     setTargetActivity(null);
+    setEditingTask(null);
     setFormData({ activityName: '', taskName: '', responsible: 'Rafael', dmaic: 'M - Mensurar', status: 'Não Iniciado', deadline: '' });
     setIsModalOpen(true);
   };
 
+  // 2. Abrir Modal para NOVA TAREFA dentro de um grupo
   const handleOpenNewTask = (activityId: string, activityName: string) => {
     setExpandedActivities(prev => ({ ...prev, [activityId]: true }));
     setTargetActivity({ id: activityId, name: activityName });
+    setEditingTask(null);
     setFormData({ activityName: activityName, taskName: '', responsible: 'Rafael', dmaic: 'I - Implementar', status: 'Não Iniciado', deadline: '' });
     setIsModalOpen(true);
   };
 
+  // 3. Abrir Modal para EDITAR UMA TAREFA existente
+  const handleOpenEditTask = (activityId: string, activityName: string, task: SubActivity) => {
+    setTargetActivity({ id: activityId, name: activityName });
+    setEditingTask({ id: task.id });
+    setFormData({
+        activityName: activityName,
+        taskName: task.name,
+        responsible: task.responsible,
+        dmaic: task.dmaic,
+        status: task.status,
+        deadline: task.deadline ? task.deadline.split('T')[0] : ''
+    });
+    setIsModalOpen(true);
+  };
+
+  // 4. Salvar (Create ou Update)
   const handleSaveTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newActivityId = crypto.randomUUID();
-    const newTaskId = crypto.randomUUID();
     
-    if (onCreateDemand) {
-        const webhookPayload = {
-            projectId: project.id,
-            projectTitle: project.title,
-            activityGroupId: targetActivity ? targetActivity.id : newActivityId,
-            activityGroupName: targetActivity ? targetActivity.name : formData.activityName,
-            taskId: newTaskId,
-            taskName: formData.taskName, 
-            responsible: formData.responsible,
-            dmaic: formData.dmaic,
-            status: formData.status,
-            deadline: formData.deadline,
-            type: targetActivity ? 'new_task' : 'new_demand_group'
-        };
-        await onCreateDemand(webhookPayload);
-    }
-
-    let updatedActivities;
-    if (targetActivity) {
-        updatedActivities = project.activities.map(act => {
-            if (act.id === targetActivity.id) {
-                return {
-                    ...act,
-                    subActivities: [...act.subActivities, {
-                        id: newTaskId,
+    // CENÁRIO A: EDIÇÃO DE TAREFA EXISTENTE
+    if (editingTask && targetActivity) {
+        const updatedActivities = project.activities.map(act => {
+            if (act.id !== targetActivity.id) return act;
+            return {
+                ...act,
+                subActivities: act.subActivities.map(sub => {
+                    if (sub.id !== editingTask.id) return sub;
+                    return {
+                        ...sub,
                         name: formData.taskName,
                         responsible: formData.responsible,
                         dmaic: formData.dmaic,
                         status: formData.status,
                         deadline: formData.deadline
-                    }]
-                };
-            }
-            return act;
+                    };
+                })
+            };
         });
-    } else {
-        const newActivity = {
-            id: newActivityId,
-            name: formData.activityName,
-            subActivities: [{
-                id: newTaskId,
-                name: formData.taskName,
+
+        // Atualização Visual Imediata
+        onLocalUpdateProject({ 
+            ...project, 
+            activities: updatedActivities, 
+            progress: calculateProgress(updatedActivities) 
+        });
+
+        // Envio para o Backend (N8N)
+        if (onCreateDemand) {
+            const payload = {
+                type: 'update_task', // Tipo específico para atualização
+                projectId: project.id,
+                projectTitle: project.title,
+                activityGroupId: targetActivity.id,
+                activityGroupName: targetActivity.name,
+                taskId: editingTask.id,
+                taskName: formData.taskName,
+                responsible: formData.responsible,
+                status: formData.status,
+                dmaic: formData.dmaic,
+                deadline: formData.deadline
+            };
+            await onCreateDemand(payload);
+        }
+    } 
+    // CENÁRIO B: CRIAÇÃO (Nova Tarefa ou Novo Grupo)
+    else {
+        const newActivityId = targetActivity ? targetActivity.id : crypto.randomUUID();
+        const newTaskId = crypto.randomUUID();
+
+        // Envio para o Backend (N8N)
+        if (onCreateDemand) {
+            const webhookPayload = {
+                projectId: project.id,
+                projectTitle: project.title,
+                activityGroupId: newActivityId,
+                activityGroupName: targetActivity ? targetActivity.name : formData.activityName,
+                taskId: newTaskId,
+                taskName: formData.taskName, 
                 responsible: formData.responsible,
                 dmaic: formData.dmaic,
                 status: formData.status,
-                deadline: formData.deadline
-            }]
-        };
-        updatedActivities = [...project.activities, newActivity];
-        setExpandedActivities(prev => ({ ...prev, [newActivityId]: true }));
+                deadline: formData.deadline,
+                type: targetActivity ? 'new_task' : 'new_demand_group'
+            };
+            await onCreateDemand(webhookPayload);
+        }
+
+        // Atualização Local
+        let updatedActivities;
+        if (targetActivity) {
+            // Adicionar tarefa em grupo existente
+            updatedActivities = project.activities.map(act => {
+                if (act.id === targetActivity.id) {
+                    return {
+                        ...act,
+                        subActivities: [...act.subActivities, {
+                            id: newTaskId,
+                            name: formData.taskName,
+                            responsible: formData.responsible,
+                            dmaic: formData.dmaic,
+                            status: formData.status,
+                            deadline: formData.deadline
+                        }]
+                    };
+                }
+                return act;
+            });
+        } else {
+            // Criar novo grupo + tarefa
+            const newActivity = {
+                id: newActivityId,
+                name: formData.activityName,
+                subActivities: [{
+                    id: newTaskId,
+                    name: formData.taskName,
+                    responsible: formData.responsible,
+                    dmaic: formData.dmaic,
+                    status: formData.status,
+                    deadline: formData.deadline
+                }]
+            };
+            updatedActivities = [...project.activities, newActivity];
+            setExpandedActivities(prev => ({ ...prev, [newActivityId]: true }));
+        }
+        
+        onLocalUpdateProject({ ...project, activities: updatedActivities, progress: calculateProgress(updatedActivities) });
     }
-    
-    onLocalUpdateProject({ ...project, activities: updatedActivities, progress: calculateProgress(updatedActivities) });
+
     setIsModalOpen(false);
   };
 
@@ -430,101 +400,70 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                                 <tr>
                                   <th className="px-4 py-3 font-bold w-[40%] pl-12 border-r border-slate-300 dark:border-slate-600">Tarefa</th>
                                   <th className="px-4 py-3 font-bold w-[15%] text-center border-r border-slate-300 dark:border-slate-600">Responsável</th>
-                                  <th className="px-4 py-3 font-bold w-[15%] text-center border-r border-slate-300 dark:border-slate-600">Prazo</th>
-                                  <th className="px-4 py-3 font-bold w-[15%] text-center border-r border-slate-300 dark:border-slate-600">Status</th>
-                                  <th className="px-4 py-3 font-bold w-[15%] text-center">DMAIC</th>
+                                  <th className="px-4 py-3 font-bold w-[10%] text-center border-r border-slate-300 dark:border-slate-600">Prazo</th>
+                                  <th className="px-4 py-3 font-bold w-[12%] text-center border-r border-slate-300 dark:border-slate-600">Status</th>
+                                  <th className="px-4 py-3 font-bold w-[13%] text-center border-r border-slate-300 dark:border-slate-600">DMAIC</th>
+                                  <th className="px-4 py-3 font-bold w-[10%] text-center text-slate-400"><Settings size={16} className="mx-auto" /></th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200 dark:divide-slate-700/50 bg-white dark:bg-slate-800">
                                 {activity.subActivities.map(sub => (
                                   <tr key={sub.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
-                                     {/* Task Name - Editable Sutil (Clean Look) */}
-                                     <td className="px-4 py-0 pl-12 border-r border-slate-300 dark:border-slate-600 h-12 group-hover:bg-white dark:group-hover:bg-slate-700 transition-all">
-                                        <input
-                                          type="text"
-                                          defaultValue={sub.name}
-                                          onFocus={(e) => handleInputFocus(e.target.value)}
-                                          onBlur={(e) => handleTaskUpdate(activity.id, sub.id, 'name', e.target.value, e.target)}
-                                          onKeyDown={handleKeyDown}
-                                          className="w-full bg-transparent border-b-2 border-transparent focus:border-brand-500 text-slate-700 dark:text-slate-200 font-medium text-sm truncate p-1 h-full outline-none transition-colors"
-                                        />
+                                     {/* Task Name - Increased Font Size */}
+                                     <td className="px-4 py-3 pl-12 border-r border-slate-300 dark:border-slate-600">
+                                        <span className="text-base font-medium text-slate-900 dark:text-slate-100 block truncate" title={sub.name}>
+                                            {sub.name}
+                                        </span>
                                      </td>
 
-                                     {/* Responsible - Editable Sutil */}
-                                     <td className="px-2 py-0 text-center border-r border-slate-300 dark:border-slate-600 h-12 group-hover:bg-white dark:group-hover:bg-slate-700">
-                                        <div className="flex justify-center items-center h-full">
-                                           <div className="w-full max-w-[140px]">
-                                              <input
-                                                type="text"
-                                                defaultValue={sub.responsible}
-                                                onFocus={(e) => handleInputFocus(e.target.value)}
-                                                onBlur={(e) => handleTaskUpdate(activity.id, sub.id, 'responsible', e.target.value, e.target)}
-                                                onKeyDown={handleKeyDown}
-                                                className="w-full bg-transparent text-center text-sm font-medium text-slate-600 dark:text-slate-300 border-b-2 border-transparent focus:border-brand-500 outline-none transition-colors p-1"
-                                              />
-                                           </div>
-                                        </div>
+                                     {/* Responsible - Read Only */}
+                                     <td className="px-4 py-3 text-center border-r border-slate-300 dark:border-slate-600">
+                                        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                                            {sub.responsible}
+                                        </span>
                                      </td>
 
-                                     {/* Deadline - Custom Badge Style (Clean & Consistent) */}
-                                     <td className="px-2 py-0 text-center border-r border-slate-300 dark:border-slate-600 h-12 group-hover:bg-white dark:group-hover:bg-slate-700">
-                                        <div className="flex justify-center items-center h-full">
-                                           <div className="relative flex items-center justify-center gap-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-md px-3 py-1.5 shadow-sm hover:border-brand-400 dark:hover:border-brand-500 transition-colors w-fit mx-auto cursor-pointer group/date">
-                                              <Calendar size={14} className="text-slate-400 group-hover/date:text-brand-500 transition-colors" />
-                                              <span className="text-sm font-medium text-slate-600 dark:text-slate-200">
-                                                {sub.deadline 
-                                                    ? new Date(sub.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).replace('.', '')
-                                                    : '-'}
-                                              </span>
-                                              {/* Invisible Input covering the whole badge */}
-                                              <input
-                                                  type="date"
-                                                  defaultValue={sub.deadline ? sub.deadline.split('T')[0] : ''}
-                                                  onFocus={(e) => handleInputFocus(e.target.value)}
-                                                  onBlur={(e) => handleTaskUpdate(activity.id, sub.id, 'deadline', e.target.value, e.target)}
-                                                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
-                                              />
-                                           </div>
-                                        </div>
+                                     {/* Deadline - Badge */}
+                                     <td className="px-4 py-3 text-center border-r border-slate-300 dark:border-slate-600">
+                                        {sub.deadline ? (
+                                            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold">
+                                                <Calendar size={12} />
+                                                {new Date(sub.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                                            </div>
+                                        ) : (
+                                            <span className="text-slate-400 text-xs">-</span>
+                                        )}
                                      </td>
 
-                                     {/* Status (Editable Select) */}
-                                     <td className={`p-0 h-12 border-r border-slate-300 dark:border-slate-600 relative group-hover:border-slate-50 transition-colors`}>
-                                        <div className="w-full h-full flex items-center justify-center px-1">
-                                          <select 
-                                            value={sub.status}
-                                            onChange={(e) => handleTaskUpdate(activity.id, sub.id, 'status', e.target.value)}
-                                            className={`w-full py-1 rounded text-center text-xs font-bold cursor-pointer appearance-none outline-none transition-colors ${STATUS_COLORS[sub.status]}`}
-                                          >
-                                            <option value="Não Iniciado" className="bg-white text-slate-800">Não Iniciado</option>
-                                            <option value="Em Andamento" className="bg-white text-slate-800">Em Andamento</option>
-                                            <option value="Concluído" className="bg-white text-slate-800">Concluído</option>
-                                            <option value="Bloqueado" className="bg-white text-slate-800">Bloqueado</option>
-                                          </select>
-                                        </div>
+                                     {/* Status - Improved Badge Style (Centered, Compact, Rounded) */}
+                                     <td className="px-4 py-3 text-center border-r border-slate-300 dark:border-slate-600">
+                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border ${STATUS_COLORS[sub.status]}`}>
+                                            {sub.status}
+                                        </span>
                                      </td>
 
-                                     {/* DMAIC (Editable Select) */}
-                                     <td className={`p-0 h-12 relative px-1`}>
-                                         <div className="w-full h-full flex items-center justify-center">
-                                            <select 
-                                              value={sub.dmaic}
-                                              onChange={(e) => handleTaskUpdate(activity.id, sub.id, 'dmaic', e.target.value)}
-                                              className={`w-full py-1 rounded text-center text-xs font-bold cursor-pointer appearance-none outline-none transition-colors ${DMAIC_COLORS[sub.dmaic]}`}
-                                            >
-                                              <option value="D - Definir" className="bg-white text-slate-800">Definir</option>
-                                              <option value="M - Mensurar" className="bg-white text-slate-800">Mensurar</option>
-                                              <option value="A - Analisar" className="bg-white text-slate-800">Analisar</option>
-                                              <option value="I - Implementar" className="bg-white text-slate-800">Implementar</option>
-                                              <option value="C - Controlar" className="bg-white text-slate-800">Controlar</option>
-                                            </select>
-                                        </div>
+                                     {/* DMAIC - Full Name & Improved Badge Style */}
+                                     <td className="px-4 py-3 text-center border-r border-slate-300 dark:border-slate-600">
+                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border ${DMAIC_COLORS[sub.dmaic]}`}>
+                                            {sub.dmaic}
+                                        </span>
+                                     </td>
+
+                                     {/* Action: Edit Button */}
+                                     <td className="px-4 py-3 text-center">
+                                         <button 
+                                            onClick={() => handleOpenEditTask(activity.id, activity.name, sub)}
+                                            className="p-2 text-slate-400 hover:text-brand-600 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg transition-all"
+                                            title="Editar Tarefa"
+                                         >
+                                            <Pencil size={16} />
+                                         </button>
                                      </td>
                                   </tr>
                                 ))}
                                 {activity.subActivities.length === 0 && (
                                    <tr>
-                                      <td colSpan={5} className="py-4 text-center text-xs text-slate-400 italic">
+                                      <td colSpan={6} className="py-4 text-center text-xs text-slate-400 italic">
                                          Vazio
                                       </td>
                                    </tr>
@@ -569,11 +508,22 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                   </div>
                   <div className="p-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar">
                     {tasksInColumn.map(task => {
-                      const parentActivity = project.activities.find(a => a.subActivities.some(s => s.id === task.id))?.name;
+                      const parentActivity = project.activities.find(a => a.subActivities.some(s => s.id === task.id));
                       return (
-                        <div key={task.id} className="bg-white dark:bg-slate-700 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-600 hover:shadow-md hover:border-brand-300 dark:hover:border-brand-500 transition-all cursor-grab active:cursor-grabbing group">
+                        <div key={task.id} className="bg-white dark:bg-slate-700 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-600 hover:shadow-md hover:border-brand-300 dark:hover:border-brand-500 transition-all cursor-grab active:cursor-grabbing group relative">
+                          {/* Botão de edição também no Kanban */}
+                          <button 
+                             onClick={(e) => {
+                                 e.stopPropagation();
+                                 if (parentActivity) handleOpenEditTask(parentActivity.id, parentActivity.name, task);
+                             }}
+                             className="absolute top-2 right-2 p-1.5 text-slate-300 hover:text-brand-600 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                             <Pencil size={12} />
+                          </button>
+
                           <div className="text-xs text-slate-400 mb-2 flex justify-between items-center border-b border-slate-50 dark:border-slate-600 pb-2">
-                            <span className="truncate max-w-[120px]" title={parentActivity}>{parentActivity}</span>
+                            <span className="truncate max-w-[120px]" title={parentActivity?.name}>{parentActivity?.name}</span>
                             <span className={`font-bold text-[10px] px-2 py-0.5 rounded text-center border ${DMAIC_COLORS[task.dmaic]}`}>
                                 {task.dmaic.split(' - ')[0]}
                             </span>
@@ -682,11 +632,11 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
             <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 rounded-t-2xl">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-                  {targetActivity ? 'Nova Tarefa' : 'Nova Demanda Principal'}
+                  {editingTask ? 'Editar Tarefa' : (targetActivity ? 'Nova Tarefa' : 'Nova Demanda Principal')}
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                   {targetActivity 
-                    ? <span>Adicionando à: <strong className="text-brand-600">{targetActivity.name}</strong></span> 
+                    ? <span>{editingTask ? 'Editando em' : 'Adicionando à'}: <strong className="text-brand-600">{targetActivity.name}</strong></span> 
                     : 'Crie um agrupamento de tarefas para organizar o projeto.'}
                 </p>
               </div>
@@ -826,7 +776,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                   className="px-8 py-3 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl transition-colors shadow-lg shadow-brand-200 dark:shadow-none flex items-center"
                 >
                   <Save size={18} className="mr-2" />
-                  Salvar
+                  {editingTask ? 'Salvar Alterações' : 'Salvar'}
                 </button>
               </div>
             </form>
