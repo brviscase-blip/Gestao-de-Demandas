@@ -12,6 +12,22 @@ import { Loader2 } from 'lucide-react';
 type ViewState = 'dashboard' | 'project-list' | 'project-detail';
 type Theme = 'light' | 'dark';
 
+// Função auxiliar para buscar valor em objeto ignorando Case Sensitive (Maiúsculas/Minúsculas)
+const getValueCI = (obj: any, keys: string[]) => {
+  if (!obj) return undefined;
+  const objKeys = Object.keys(obj);
+  
+  for (const key of keys) {
+    // 1. Tentativa Exata
+    if (obj[key] !== undefined && obj[key] !== null) return obj[key];
+    
+    // 2. Tentativa Case Insensitive
+    const foundKey = objKeys.find(k => k.toLowerCase() === key.toLowerCase());
+    if (foundKey && obj[foundKey] !== undefined && obj[foundKey] !== null) return obj[foundKey];
+  }
+  return undefined;
+};
+
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<ViewState>('dashboard');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -79,12 +95,12 @@ const App: React.FC = () => {
 
         const mappedProjects: Project[] = rawProjects.map((item: any) => {
           // Normalização de ID do Projeto (Converte para String para consistência)
-          const projectId = String(item.id || item.id_supabase || item.ID || '');
+          const projectId = String(getValueCI(item, ['id', 'ID', 'id_supabase', 'ID_Projeto']) || '');
 
           // Filtrar demandas deste projeto específico (Case Insensitive Check)
           const projectDemands = rawDemands.filter((d: any) => {
              // Tenta pegar o ID do projeto na demanda em várias formatações
-             const demandProjectId = String(d.ID_Projeto || d.id_projeto || d.project_id || '');
+             const demandProjectId = String(getValueCI(d, ['ID_Projeto', 'id_projeto', 'project_id', 'projectId']) || '');
              return demandProjectId === projectId;
           });
 
@@ -92,13 +108,9 @@ const App: React.FC = () => {
           const activitiesMap = new Map<string, Activity>();
 
           projectDemands.forEach((d: any) => {
-            // CORREÇÃO AQUI: Mapeando colunas exatas do CSV
-            // CSV: Titulo_Demanda (Agrupador)
-            // CSV: Demanda_Principal (Tarefa)
-            // CSV: Responsavel_ (Responsável com underline no final)
-            
-            // O nome do agrupador serve como ID do grupo, já que não temos ID específico no CSV
-            const groupName = d.Titulo_Demanda || d.titulo_demanda || 'Geral';
+            // Mapeando colunas com a função auxiliar (Case Insensitive)
+            // Isso garante que se o banco retornar 'titulo_demanda' ou 'Titulo_Demanda', ambos funcionam.
+            const groupName = getValueCI(d, ['Titulo_Demanda', 'titulo_demanda', 'activityGroupName']) || 'Geral';
             const groupId = groupName; // Usamos o nome como chave única do grupo dentro do projeto
 
             if (!activitiesMap.has(groupId)) {
@@ -111,14 +123,22 @@ const App: React.FC = () => {
 
             const activity = activitiesMap.get(groupId)!;
             
-            // Mapear a Tarefa (SubActivity) usando as colunas corretas
+            // Extraindo valores das colunas com segurança usando getValueCI em TODOS os campos
+            const subId = String(getValueCI(d, ['id', 'ID', 'taskId']) || crypto.randomUUID());
+            const subName = getValueCI(d, ['Demanda_Principal', 'demanda_principal', 'taskName', 'Nome_Tarefa']) || 'Sem descrição';
+            const subResponsible = getValueCI(d, ['Responsavel_', 'responsavel_', 'responsible', 'Responsavel']) || 'Não atribuído';
+            const subStatus = getValueCI(d, ['Status', 'status']) as TaskStatus || 'Não Iniciado';
+            const subDmaic = getValueCI(d, ['DMAIC', 'dmaic']) as DMAICPhase || 'M - Mensurar';
+            const subDeadline = getValueCI(d, ['Data_Prazo', 'data_prazo', 'deadline']);
+
+            // Mapear a Tarefa (SubActivity)
             activity.subActivities.push({
-              id: String(d.id || d.ID),
-              name: d.Demanda_Principal || d.demanda_principal || d.Nome_Tarefa || 'Sem descrição',
-              responsible: d.Responsavel_ || d.responsavel_ || d.Responsavel || 'Não atribuído',
-              status: (d.Status || d.status) as TaskStatus || 'Não Iniciado',
-              dmaic: (d.DMAIC || d.dmaic) as DMAICPhase || 'M - Mensurar',
-              deadline: d.Data_Prazo || d.data_prazo || undefined
+              id: subId,
+              name: subName,
+              responsible: subResponsible,
+              status: subStatus,
+              dmaic: subDmaic,
+              deadline: subDeadline
             });
           });
 
@@ -127,22 +147,22 @@ const App: React.FC = () => {
           const completedTasks = allTasks.filter(t => t.status === 'Concluído').length;
           const calculatedProgress = allTasks.length > 0 
             ? Math.round((completedTasks / allTasks.length) * 100) 
-            : (item.progresso || item.progress || 0);
+            : (getValueCI(item, ['progresso', 'progress']) || 0);
 
           return {
             id: projectId,
-            title: item.Nome_do_Projeto || item.nome_do_projeto || item.title || 'Sem Título',
-            type: item.Tipo_do_Projeto || item.tipo_do_projeto || item.type || 'Geral',
-            startDate: item.Data_de_Inicio || item.data_de_inicio || item.startDate || new Date().toISOString(),
-            justification: item.Justificativa || item.justificativa || '',
-            objective: item.Objetivo || item.objetivo || '',
-            benefits: item.Beneficios_Esperados || item.beneficios_esperados || '',
-            description: item.Objetivo || item.objetivo || '', 
-            responsibleLead: item['Responsável_Principal'] || item['responsável_principal'] || item.Responsavel_Principal || item.responsavel_principal || 'Não atribuído',
+            title: getValueCI(item, ['Nome_do_Projeto', 'nome_do_projeto', 'title']) || 'Sem Título',
+            type: getValueCI(item, ['Tipo_do_Projeto', 'tipo_do_projeto', 'type']) || 'Geral',
+            startDate: getValueCI(item, ['Data_de_Inicio', 'data_de_inicio', 'startDate']) || new Date().toISOString(),
+            justification: getValueCI(item, ['Justificativa', 'justificativa']) || '',
+            objective: getValueCI(item, ['Objetivo', 'objetivo']) || '',
+            benefits: getValueCI(item, ['Beneficios_Esperados', 'beneficios_esperados', 'benefits']) || '',
+            description: getValueCI(item, ['Objetivo', 'objetivo', 'description']) || '', 
+            responsibleLead: getValueCI(item, ['Responsavel_Principal', 'responsavel_principal', 'responsibleLead']) || 'Não atribuído',
             progress: calculatedProgress, 
-            status: item.status || 'Ativo',
+            status: getValueCI(item, ['status', 'Status']) || 'Ativo',
             activities: Array.from(activitiesMap.values()),
-            recurrentDemands: [] // Recorrências ainda podem ser implementadas se houver tabela específica
+            recurrentDemands: [] 
           };
         });
 
@@ -172,7 +192,6 @@ const App: React.FC = () => {
     );
 
     // 2. Sync to Backend (N8N)
-    // Chamamos a função de edição que já possui a lógica de enviar para o Webhook de Projetos
     await handleEditProject(updatedProject);
   };
 
@@ -261,8 +280,6 @@ const App: React.FC = () => {
       return true;
     } catch (error) {
       console.error("Erro ao editar projeto:", error);
-      // Não alertamos aqui se for uma atualização em background, 
-      // mas como é chamado por botões explícitos, o alert é aceitável.
       return false;
     }
   };
