@@ -1,8 +1,7 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Project, SubActivity, TaskStatus, RecurrentMonthStatus, DMAICPhase } from '../types';
 import { MONTHS, STATUS_COLORS, DMAIC_COLORS } from '../constants';
-import { ArrowLeft, Plus, Calendar, List, Trello, Clock, Target, TrendingUp, AlertTriangle, X, Save, ChevronDown, ChevronRight, User, CalendarDays, Tag, Activity, Briefcase } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, List, Trello, Clock, Target, TrendingUp, AlertTriangle, X, Save, ChevronDown, ChevronRight, User, CalendarDays, Tag, Activity } from 'lucide-react';
 
 interface ProjectDetailProps {
   project: Project;
@@ -37,7 +36,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
 
   useEffect(() => {
     return () => {
-      Object.values(debounceTimers.current).forEach(timer => clearTimeout(timer));
+      // Cast timer to any to handle potential type mismatch between NodeJS.Timeout and number
+      Object.values(debounceTimers.current).forEach(timer => clearTimeout(timer as any));
     };
   }, []);
 
@@ -59,17 +59,14 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
     subActivityId: string, 
     field: keyof SubActivity, 
     newValue: string,
-    inputElement?: HTMLInputElement // Opcional: para resetar visualmente em caso de erro
+    inputElement?: HTMLInputElement
   ) => {
     
     // 1. Validação de Campo Vazio
     if (!newValue || newValue.trim() === '') {
         console.warn("Campo não pode ficar vazio. Revertendo...");
-        
-        // Se temos referência do elemento input, forçamos o valor de volta visualmente
         if (inputElement && originalValue) {
             inputElement.value = originalValue;
-            // Feedback visual de erro (vermelho rápido)
             inputElement.classList.add('border-b-red-500', 'bg-red-50', 'dark:bg-red-900/20');
             setTimeout(() => {
                 inputElement.classList.remove('border-b-red-500', 'bg-red-50', 'dark:bg-red-900/20');
@@ -90,7 +87,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
 
     if (!currentTask) return;
 
-    // 3. Atualização Otimista (UI) - USA onLocalUpdateProject
+    // 3. Atualização Otimista (UI)
     const updatedActivities = project.activities.map(act => {
       if (act.id !== activityId) return act;
       return {
@@ -102,14 +99,13 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
       };
     });
     
-    // ATUALIZA SÓ O LOCAL (Não dispara webhook de projeto)
     onLocalUpdateProject({ 
         ...project, 
         activities: updatedActivities, 
         progress: calculateProgress(updatedActivities) 
     });
 
-    // 4. Envio para o Backend (N8N - DEMANDAS) com Debounce (15s)
+    // 4. Envio para o Backend (N8N) com Debounce
     if (onCreateDemand) {
         const uniqueKey = `${subActivityId}-${field}`;
 
@@ -168,7 +164,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
       newData[monthIndex] = { ...newData[monthIndex], status: nextStatus };
       return { ...rd, data: newData };
     });
-    
     onUpdateProject({ ...project, recurrentDemands: updatedRecurrent });
   };
 
@@ -191,7 +186,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
     const newActivityId = crypto.randomUUID();
     const newTaskId = crypto.randomUUID();
     
-    // 1. Envia para o N8N (Webhook de Demandas)
     if (onCreateDemand) {
         const webhookPayload = {
             projectId: project.id,
@@ -209,7 +203,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
         await onCreateDemand(webhookPayload);
     }
 
-    // 2. Atualiza Localmente (UI)
     let updatedActivities;
     if (targetActivity) {
         updatedActivities = project.activities.map(act => {
@@ -245,7 +238,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
         setExpandedActivities(prev => ({ ...prev, [newActivityId]: true }));
     }
     
-    // USA onLocalUpdateProject para não disparar webhook de projeto
     onLocalUpdateProject({ ...project, activities: updatedActivities, progress: calculateProgress(updatedActivities) });
     setIsModalOpen(false);
   };
@@ -558,7 +550,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
           </div>
         )}
 
-        {/* Kanban Content */}
         {activeTab === 'kanban' && (
           <div className="flex gap-6 overflow-x-auto h-full pb-4">
             {(['Não Iniciado', 'Em Andamento', 'Bloqueado', 'Concluído'] as TaskStatus[]).map(status => {
@@ -617,7 +608,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
           </div>
         )}
 
-        {/* Recurrent Content */}
         {activeTab === 'recurrent' && (
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
              <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-between">
@@ -683,6 +673,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
              </div>
           </div>
         )}
+
+      </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
