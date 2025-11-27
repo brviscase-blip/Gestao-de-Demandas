@@ -123,14 +123,17 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
             };
         });
 
-        // Atualização Visual Imediata
+        // 1. Atualização Visual Imediata (Optimistic UI)
         onLocalUpdateProject({ 
             ...project, 
             activities: updatedActivities, 
             progress: calculateProgress(updatedActivities) 
         });
 
-        // Envio para o Backend (N8N)
+        // 2. Fechar Modal Imediatamente
+        setIsModalOpen(false);
+
+        // 3. Envio para o Backend (N8N) - Fire and Forget
         if (onCreateDemand) {
             const payload = {
                 type: 'update_task', // Tipo específico para atualização
@@ -145,7 +148,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                 dmaic: formData.dmaic,
                 deadline: formData.deadline
             };
-            await onCreateDemand(payload);
+            // Não usamos await aqui para não bloquear a UI caso o webhook demore
+            onCreateDemand(payload).catch(err => console.error("Erro ao atualizar tarefa no background:", err));
         }
     } 
     // CENÁRIO B: CRIAÇÃO (Nova Tarefa ou Novo Grupo)
@@ -153,9 +157,10 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
         const newActivityId = targetActivity ? targetActivity.id : crypto.randomUUID();
         const newTaskId = crypto.randomUUID();
 
-        // Envio para o Backend (N8N)
+        // 1. Preparar Payload
+        let webhookPayload = null;
         if (onCreateDemand) {
-            const webhookPayload = {
+            webhookPayload = {
                 projectId: project.id,
                 projectTitle: project.title,
                 activityGroupId: newActivityId,
@@ -168,10 +173,9 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                 deadline: formData.deadline,
                 type: targetActivity ? 'new_task' : 'new_demand_group'
             };
-            await onCreateDemand(webhookPayload);
         }
 
-        // Atualização Local
+        // 2. Atualização Local (Optimistic UI)
         let updatedActivities;
         if (targetActivity) {
             // Adicionar tarefa em grupo existente
@@ -210,9 +214,16 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
         }
         
         onLocalUpdateProject({ ...project, activities: updatedActivities, progress: calculateProgress(updatedActivities) });
-    }
+        
+        // 3. Fechar Modal Imediatamente
+        setIsModalOpen(false);
 
-    setIsModalOpen(false);
+        // 4. Envio para o Backend (N8N) - Fire and Forget
+        if (onCreateDemand && webhookPayload) {
+             // Não usamos await aqui para não bloquear a UI caso o webhook demore
+             onCreateDemand(webhookPayload).catch(err => console.error("Erro ao criar demanda no background:", err));
+        }
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
