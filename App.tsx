@@ -55,7 +55,7 @@ const App: React.FC = () => {
       console.log('Iniciando busca no Supabase...');
 
       const { data, error } = await supabase
-        .from('gestão_de_demandas')
+        .from('Cadastro_de_Demandas')
         .select('*');
 
       if (error) {
