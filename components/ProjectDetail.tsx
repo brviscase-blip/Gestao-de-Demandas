@@ -26,7 +26,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
   const [editingTask, setEditingTask] = useState<{id: string} | null>(null);
 
   // Delete Confirmation State
-  const [taskToDelete, setTaskToDelete] = useState<{activityId: string, taskId: string, activityName: string} | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<{activityId: string, taskId: string, activityName: string, taskName: string} | null>(null);
   
   const [formData, setFormData] = useState({
     activityName: '',
@@ -232,14 +232,14 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
   // DELETE HANDLERS
   // ==========================================================
 
-  const handleClickDelete = (e: React.MouseEvent, activityId: string, taskId: string, activityName: string) => {
+  const handleClickDelete = (e: React.MouseEvent, activityId: string, taskId: string, activityName: string, taskName: string) => {
     e.stopPropagation();
-    setTaskToDelete({ activityId, taskId, activityName });
+    setTaskToDelete({ activityId, taskId, activityName, taskName });
   };
 
   const confirmDeleteTask = async () => {
     if (!taskToDelete) return;
-    const { activityId, taskId, activityName } = taskToDelete;
+    const { activityId, taskId, activityName, taskName } = taskToDelete;
 
     // 1. Atualização Local (Optimistic UI)
     const updatedActivities = project.activities.map(act => {
@@ -266,7 +266,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
             projectTitle: project.title,
             activityGroupId: activityId,
             activityGroupName: activityName,
-            taskId: taskId
+            taskId: taskId,
+            taskName: taskName
         };
         onCreateDemand(payload).catch(err => console.error("Erro ao excluir tarefa:", err));
     }
@@ -533,7 +534,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                                      <td className="px-4 py-3 text-center">
                                          <div className="flex items-center justify-center gap-1">
                                             <button 
-                                                onClick={(e) => handleClickDelete(e, activity.id, sub.id, activity.name)}
+                                                onClick={(e) => handleClickDelete(e, activity.id, sub.id, activity.name, sub.name)}
                                                 className="p-2 text-slate-400 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg transition-all"
                                                 title="Excluir Tarefa"
                                             >
@@ -605,7 +606,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                             <button 
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    if (parentActivity) handleClickDelete(e, parentActivity.id, task.id, parentActivity.name);
+                                    if (parentActivity) handleClickDelete(e, parentActivity.id, task.id, parentActivity.name, task.name);
                                 }}
                                 className="p-1.5 text-slate-300 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-full transition-colors"
                                 title="Excluir"
