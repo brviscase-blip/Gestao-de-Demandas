@@ -309,15 +309,22 @@ const App: React.FC = () => {
 
   // Excluir Projeto
   const handleDeleteProject = async (projectId: string) => {
+    const projectToDelete = projects.find(p => p.id === projectId);
     const previousProjects = [...projects];
+    
+    // UI Optimistic
     setProjects(prev => prev.filter(p => p.id !== projectId));
 
     try {
       if (N8N_WEBHOOK_URL) {
         const payload = {
           action: 'delete',
-          id: projectId
+          id: projectId,
+          title: projectToDelete ? projectToDelete.title : '' // Enviando o Título para exclusão em cascata das demandas
         };
+        
+        console.log("Enviando delete de projeto:", payload);
+
         const response = await fetch(N8N_WEBHOOK_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

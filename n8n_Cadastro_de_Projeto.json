@@ -381,6 +381,35 @@
           "name": "Supabase account"
         }
       }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "Cadastro_de_Demanda",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "Projeto",
+              "condition": "eq",
+              "keyValue": "={{ $('Webhook').item.json.body.title }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1460,
+        16
+      ],
+      "id": "cascading-delete-demands",
+      "name": "Excluir o Projeto nas Demandas",
+      "credentials": {
+        "supabaseApi": {
+          "id": "j5VxDWQqsuoVOjDA",
+          "name": "Supabase account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -447,13 +476,24 @@
           }
         ]
       ]
+    },
+    "Delete a row": {
+      "main": [
+        [
+          {
+            "node": "Excluir o Projeto nas Demandas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "updated-workflow-v2",
+  "versionId": "updated-workflow-v3",
   "id": "t9lISrdqKtyuJpip",
   "tags": []
 }
