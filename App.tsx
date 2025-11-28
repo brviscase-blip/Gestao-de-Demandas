@@ -101,9 +101,9 @@ const App: React.FC = () => {
         .from('Cadastro_de_Projeto')
         .select('*');
 
-      // 2. Buscar Demandas (Tabela: Cadastro_de_Demandas)
+      // 2. Buscar Demandas (Tabela: Cadastro_de_Demanda)
       const { data: demandsData, error: demandsError } = await supabase
-        .from('Cadastro_de_Demandas')
+        .from('Cadastro_de_Demanda')
         .select('*');
 
       if (projectsError) {
@@ -126,15 +126,16 @@ const App: React.FC = () => {
           const projectDemands = rawDemands.filter((d: any) => {
              // Tenta pegar o ID do projeto na demanda.
              // O banco pode ter ID_Projeto ou project_id.
-             const demandProjectId = String(getValueCI(d, ['ID_Projeto', 'id_projeto', 'project_id', 'projectId']) || '');
-             return demandProjectId === project.id;
+             const demandProjectId = String(getValueCI(d, ['ID_Projeto', 'id_projeto', 'project_id', 'projectId', 'Projeto']) || '');
+             // Verifica por ID ou pelo Nome do Projeto (vinculo por string conforme CSV)
+             return demandProjectId === project.id || demandProjectId === project.title;
           });
 
           // 3. Agrupa demandas em Atividades
           const activitiesMap = new Map<string, Activity>();
 
           projectDemands.forEach((d: any) => {
-            const groupName = getValueCI(d, ['Titulo_Demanda', 'titulo_demanda', 'activityGroupName']) || 'Geral';
+            const groupName = getValueCI(d, ['Titulo_Demanda', 'titulo_demanda', 'activityGroupName', 'Demanda_Principal']) || 'Geral';
             // Usamos o nome do grupo como ID único dentro do escopo do projeto visualmente
             const groupId = groupName;
 
@@ -148,12 +149,13 @@ const App: React.FC = () => {
 
             const activity = activitiesMap.get(groupId)!;
             
-            const subId = String(getValueCI(d, ['id', 'ID', 'taskId']) || crypto.randomUUID());
-            const subName = getValueCI(d, ['Demanda_Principal', 'demanda_principal', 'taskName', 'Nome_Tarefa']) || 'Sem descrição';
+            const subId = String(getValueCI(d, ['id', 'ID', 'taskId', 'ID_WebHook_Edição']) || crypto.randomUUID());
+            // CORREÇÃO: Prioriza Sub_Demanda para o nome da tarefa e remove Demanda_Principal da busca para evitar duplicidade com o nome do grupo
+            const subName = getValueCI(d, ['Sub_Demanda', 'sub_demanda', 'taskName', 'Nome_Tarefa']) || 'Sem descrição';
             const subResponsible = getValueCI(d, ['Responsavel_', 'responsavel_', 'responsible', 'Responsavel']) || 'Não atribuído';
             const subStatus = getValueCI(d, ['Status', 'status']) as TaskStatus || 'Não Iniciado';
-            const subDmaic = getValueCI(d, ['DMAIC', 'dmaic']) as DMAICPhase || 'M - Mensurar';
-            const subDeadline = getValueCI(d, ['Data_Prazo', 'data_prazo', 'deadline']);
+            const subDmaic = getValueCI(d, ['DMAIC', 'dmaic', 'Dmaic']) as DMAICPhase || 'M - Mensurar';
+            const subDeadline = getValueCI(d, ['Data_Prazo', 'data_prazo', 'deadline', 'Prazo']);
 
             activity.subActivities.push({
               id: subId,
