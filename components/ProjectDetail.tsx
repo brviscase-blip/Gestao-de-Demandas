@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { Project, SubActivity, TaskStatus, RecurrentMonthStatus, DMAICPhase } from '../types';
 import { MONTHS, STATUS_COLORS, DMAIC_COLORS } from '../constants';
-import { ArrowLeft, Plus, Calendar, List, Trello, Clock, Target, TrendingUp, AlertTriangle, X, Save, ChevronDown, ChevronRight, User, CalendarDays, Tag, Activity, Pencil, Settings, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, List, Trello, Clock, Target, TrendingUp, AlertTriangle, X, Save, ChevronDown, ChevronRight, User, CalendarDays, Tag, Activity, Pencil, Settings, ChevronUp, Trash2 } from 'lucide-react';
 
 interface ProjectDetailProps {
   project: Project;
@@ -16,8 +15,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
   const [activeTab, setActiveTab] = useState<'list' | 'kanban' | 'recurrent'>('list');
   const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
   
-  // Header State
-  const [isHeaderExpanded, setIsHeaderExpanded] = useState(true);
+  // Header State - Initialized to false to hide details by default
+  const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -25,6 +24,9 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
   const [targetActivity, setTargetActivity] = useState<{id: string, name: string} | null>(null);
   // editingTask serve para saber se estamos EDITANDO uma tarefa específica
   const [editingTask, setEditingTask] = useState<{id: string} | null>(null);
+
+  // Delete Confirmation State
+  const [taskToDelete, setTaskToDelete] = useState<{activityId: string, taskId: string, activityName: string} | null>(null);
   
   const [formData, setFormData] = useState({
     activityName: '',
@@ -226,6 +228,50 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
     }
   };
 
+  // ==========================================================
+  // DELETE HANDLERS
+  // ==========================================================
+
+  const handleClickDelete = (e: React.MouseEvent, activityId: string, taskId: string, activityName: string) => {
+    e.stopPropagation();
+    setTaskToDelete({ activityId, taskId, activityName });
+  };
+
+  const confirmDeleteTask = async () => {
+    if (!taskToDelete) return;
+    const { activityId, taskId, activityName } = taskToDelete;
+
+    // 1. Atualização Local (Optimistic UI)
+    const updatedActivities = project.activities.map(act => {
+        if (act.id !== activityId) return act;
+        return {
+            ...act,
+            subActivities: act.subActivities.filter(t => t.id !== taskId)
+        };
+    });
+
+    onLocalUpdateProject({ 
+        ...project, 
+        activities: updatedActivities,
+        progress: calculateProgress(updatedActivities)
+    });
+
+    setTaskToDelete(null);
+
+    // 2. Envio para o Webhook (N8N)
+    if (onCreateDemand) {
+        const payload = {
+            type: 'delete_task', 
+            projectId: project.id,
+            projectTitle: project.title,
+            activityGroupId: activityId,
+            activityGroupName: activityName,
+            taskId: taskId
+        };
+        onCreateDemand(payload).catch(err => console.error("Erro ao excluir tarefa:", err));
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -398,7 +444,8 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                 </div>
              ) : (
                 project.activities.map(activity => {
-                  const isExpanded = expandedActivities[activity.id] ?? true;
+                  // MUDANÇA AQUI: Iniciar com ?? false faz com que o grupo comece recolhido por padrão
+                  const isExpanded = expandedActivities[activity.id] ?? false;
                   
                   return (
                     <div key={activity.id} className="bg-white dark:bg-slate-800 rounded-md shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -482,15 +529,24 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                                         </span>
                                      </td>
 
-                                     {/* Action: Edit Button */}
+                                     {/* Action: Edit & Delete Buttons */}
                                      <td className="px-4 py-3 text-center">
-                                         <button 
-                                            onClick={() => handleOpenEditTask(activity.id, activity.name, sub)}
-                                            className="p-2 text-slate-400 hover:text-brand-600 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg transition-all"
-                                            title="Editar Tarefa"
-                                         >
-                                            <Pencil size={16} />
-                                         </button>
+                                         <div className="flex items-center justify-center gap-1">
+                                            <button 
+                                                onClick={(e) => handleClickDelete(e, activity.id, sub.id, activity.name)}
+                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg transition-all"
+                                                title="Excluir Tarefa"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                            <button 
+                                                onClick={() => handleOpenEditTask(activity.id, activity.name, sub)}
+                                                className="p-2 text-slate-400 hover:text-brand-600 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg transition-all"
+                                                title="Editar Tarefa"
+                                            >
+                                                <Pencil size={16} />
+                                            </button>
+                                         </div>
                                      </td>
                                   </tr>
                                 ))}
@@ -544,16 +600,29 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                       const parentActivity = project.activities.find(a => a.subActivities.some(s => s.id === task.id));
                       return (
                         <div key={task.id} className="bg-white dark:bg-slate-700 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-600 hover:shadow-md hover:border-brand-300 dark:hover:border-brand-500 transition-all cursor-grab active:cursor-grabbing group relative">
-                          {/* Botão de edição também no Kanban */}
-                          <button 
-                             onClick={(e) => {
-                                 e.stopPropagation();
-                                 if (parentActivity) handleOpenEditTask(parentActivity.id, parentActivity.name, task);
-                             }}
-                             className="absolute top-2 right-2 p-1.5 text-slate-300 hover:text-brand-600 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                             <Pencil size={12} />
-                          </button>
+                          {/* Botões de Ação no Kanban (Edit + Delete) */}
+                          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (parentActivity) handleClickDelete(e, parentActivity.id, task.id, parentActivity.name);
+                                }}
+                                className="p-1.5 text-slate-300 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-full transition-colors"
+                                title="Excluir"
+                            >
+                                <Trash2 size={12} />
+                            </button>
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (parentActivity) handleOpenEditTask(parentActivity.id, parentActivity.name, task);
+                                }}
+                                className="p-1.5 text-slate-300 hover:text-brand-600 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-full transition-colors"
+                                title="Editar"
+                            >
+                                <Pencil size={12} />
+                            </button>
+                          </div>
 
                           <div className="text-xs text-slate-400 mb-2 flex justify-between items-center border-b border-slate-50 dark:border-slate-600 pb-2">
                             <span className="truncate max-w-[120px]" title={parentActivity?.name}>{parentActivity?.name}</span>
@@ -813,6 +882,35 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM DELETE MODAL */}
+      {taskToDelete && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in duration-200">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-400">
+              <AlertTriangle size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Excluir Tarefa?</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+              Esta ação removerá permanentemente a tarefa do projeto. Tem certeza?
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => setTaskToDelete(null)}
+                className="px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDeleteTask}
+                className="px-5 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-200 dark:shadow-none"
+              >
+                Sim, excluir
+              </button>
+            </div>
           </div>
         </div>
       )}
