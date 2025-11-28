@@ -271,7 +271,12 @@ const App: React.FC = () => {
   // Editar Projeto (Cadastro_de_Projetos)
   const handleEditProject = async (updatedProject: Project): Promise<boolean> => {
     try {
-      // Atualiza estado local
+      // CRUCIAL: Capturar o título antigo ANTES de atualizar o estado local
+      // Isso permite que o n8n saiba qual nome procurar na tabela de Demandas para atualizar
+      const oldProject = projects.find(p => p.id === updatedProject.id);
+      const previousTitle = oldProject ? oldProject.title : updatedProject.title;
+
+      // Atualiza estado local (Optimistic)
       setProjects(prevProjects => 
         prevProjects.map(p => p.id === updatedProject.id ? updatedProject : p)
       );
@@ -279,8 +284,12 @@ const App: React.FC = () => {
       if (N8N_WEBHOOK_URL) {
         const payload = {
           action: 'update',
-          ...updatedProject
+          ...updatedProject,
+          previousTitle: previousTitle // Enviando o título antigo para cascata
         };
+        
+        console.log("Enviando update de projeto:", payload);
+
         const response = await fetch(N8N_WEBHOOK_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

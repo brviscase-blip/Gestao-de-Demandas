@@ -689,9 +689,9 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
               return (
                 <div key={status} className="flex-shrink-0 w-80 flex flex-col h-full rounded-2xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 shadow-sm">
                   <div className={`p-4 border-b border-slate-200 dark:border-slate-700 font-bold text-sm flex justify-between items-center rounded-t-2xl
-                    ${status === 'Concluído' ? 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800' : ''}
-                    ${status === 'Bloqueado' ? 'text-red-700 bg-red-50 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800' : ''}
-                    ${status === 'Em Andamento' ? 'text-blue-700 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800' : ''}
+                    ${status === 'Concluído' ? 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:bg-slate-700 dark:text-emerald-300 dark:border-emerald-600' : ''}
+                    ${status === 'Bloqueado' ? 'text-red-700 bg-red-50 border-red-200 dark:bg-slate-700 dark:text-red-300 dark:border-red-600' : ''}
+                    ${status === 'Em Andamento' ? 'text-blue-700 bg-blue-50 border-blue-200 dark:bg-slate-700 dark:text-blue-300 dark:border-blue-600' : ''}
                     ${status === 'Não Iniciado' ? 'text-slate-700 bg-slate-200 dark:bg-slate-700 dark:text-slate-200' : ''}
                   `}>
                     {status}
