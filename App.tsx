@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -11,22 +10,6 @@ import { Loader2 } from 'lucide-react';
 
 type ViewState = 'dashboard' | 'project-list' | 'project-detail';
 type Theme = 'light' | 'dark';
-
-// Função auxiliar para buscar valor em objeto ignorando Case Sensitive (Maiúsculas/Minúsculas)
-const getValueCI = (obj: any, keys: string[]) => {
-  if (!obj) return undefined;
-  const objKeys = Object.keys(obj);
-  
-  for (const key of keys) {
-    // 1. Tentativa Exata
-    if (obj[key] !== undefined && obj[key] !== null) return obj[key];
-    
-    // 2. Tentativa Case Insensitive
-    const foundKey = objKeys.find(k => k.toLowerCase() === key.toLowerCase());
-    if (foundKey && obj[foundKey] !== undefined && obj[foundKey] !== null) return obj[foundKey];
-  }
-  return undefined;
-};
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<ViewState>('dashboard');
@@ -64,18 +47,61 @@ const App: React.FC = () => {
     fetchProjects();
   }, []);
 
+  /**
+   * Função auxiliar para buscar valor em objeto ignorando Case Sensitive.
+   * Útil para demandas que podem ter nomes de colunas variados no Supabase.
+   */
+  const getValueCI = (obj: any, keys: string[]) => {
+    if (!obj) return undefined;
+    const objKeys = Object.keys(obj);
+    for (const key of keys) {
+      if (obj[key] !== undefined && obj[key] !== null) return obj[key];
+      const foundKey = objKeys.find(k => k.toLowerCase() === key.toLowerCase());
+      if (foundKey && obj[foundKey] !== undefined && obj[foundKey] !== null) return obj[foundKey];
+    }
+    return undefined;
+  };
+
+  /**
+   * Mapeia os dados crus vindos do banco (Cadastro_de_Projetos) para a interface Project da aplicação.
+   * Baseado nas colunas do arquivo CSV:
+   * ID_Supabase_Projetos, Nome_do_Projeto, Tipo_do_Projeto, Responsavel, Data_de_Inicio, 
+   * Justificativa, Objetivo, Beneficios, Action_Frontend
+   */
+  const mapSupabaseProject = (item: any): Project => {
+    // Tratamento do ID: Prioriza ID_Supabase_Projetos, fallback para id
+    const id = String(item.ID_Supabase_Projetos || item.id || crypto.randomUUID());
+
+    return {
+      id: id,
+      title: item.Nome_do_Projeto || item.title || 'Sem Título',
+      type: item.Tipo_do_Projeto || item.type || 'Geral',
+      responsibleLead: item.Responsavel || item.responsibleLead || 'Não atribuído',
+      startDate: item.Data_de_Inicio || item.startDate || new Date().toISOString(),
+      justification: item.Justificativa || item.justification || '',
+      objective: item.Objetivo || item.objective || '',
+      benefits: item.Beneficios || item.benefits || '', // Mapeado para a coluna 'Beneficios'
+      description: item.Objetivo || item.description || '', // Usa Objetivo como descrição se não houver descrição
+      progress: item.progresso || item.progress || 0,
+      status: item.Status || item.status || 'Ativo',
+      activities: [], // Será populado com as demandas
+      recurrentDemands: []
+    };
+  };
+
   const fetchProjects = async () => {
     try {
       setIsLoading(true);
       
       console.log('Iniciando busca no Supabase...');
 
-      // 1. Buscar Projetos
+      // 1. Buscar Projetos (Tabela: Cadastro_de_Projeto)
+      // FIX: Nome da tabela ajustado para singular conforme erro do Supabase
       const { data: projectsData, error: projectsError } = await supabase
-        .from('Cadastro_de_Projetos')
+        .from('Cadastro_de_Projeto')
         .select('*');
 
-      // 2. Buscar Demandas (Tarefas)
+      // 2. Buscar Demandas (Tabela: Cadastro_de_Demandas)
       const { data: demandsData, error: demandsError } = await supabase
         .from('Cadastro_de_Demandas')
         .select('*');
@@ -85,7 +111,6 @@ const App: React.FC = () => {
         alert(`Erro ao conectar no banco (Projetos): ${projectsError.message}`);
         setProjects([]);
       } else {
-        // Se houver erro nas demandas, apenas loga, mas carrega os projetos
         if (demandsError) {
           console.error('Erro ao buscar demandas:', JSON.stringify(demandsError, null, 2));
         }
@@ -94,24 +119,24 @@ const App: React.FC = () => {
         const rawDemands = demandsData || [];
 
         const mappedProjects: Project[] = rawProjects.map((item: any) => {
-          // Normalização de ID do Projeto (Converte para String para consistência)
-          const projectId = String(getValueCI(item, ['id', 'ID', 'id_supabase', 'ID_Projeto']) || '');
+          // 1. Mapeia o Projeto
+          const project = mapSupabaseProject(item);
 
-          // Filtrar demandas deste projeto específico (Case Insensitive Check)
+          // 2. Filtra e Mapeia as Demandas deste Projeto
           const projectDemands = rawDemands.filter((d: any) => {
-             // Tenta pegar o ID do projeto na demanda em várias formatações
+             // Tenta pegar o ID do projeto na demanda.
+             // O banco pode ter ID_Projeto ou project_id.
              const demandProjectId = String(getValueCI(d, ['ID_Projeto', 'id_projeto', 'project_id', 'projectId']) || '');
-             return demandProjectId === projectId;
+             return demandProjectId === project.id;
           });
 
-          // Agrupar demandas em Atividades (Agrupadores)
+          // 3. Agrupa demandas em Atividades
           const activitiesMap = new Map<string, Activity>();
 
           projectDemands.forEach((d: any) => {
-            // Mapeando colunas com a função auxiliar (Case Insensitive)
-            // Isso garante que se o banco retornar 'titulo_demanda' ou 'Titulo_Demanda', ambos funcionam.
             const groupName = getValueCI(d, ['Titulo_Demanda', 'titulo_demanda', 'activityGroupName']) || 'Geral';
-            const groupId = groupName; // Usamos o nome como chave única do grupo dentro do projeto
+            // Usamos o nome do grupo como ID único dentro do escopo do projeto visualmente
+            const groupId = groupName;
 
             if (!activitiesMap.has(groupId)) {
               activitiesMap.set(groupId, {
@@ -123,7 +148,6 @@ const App: React.FC = () => {
 
             const activity = activitiesMap.get(groupId)!;
             
-            // Extraindo valores das colunas com segurança usando getValueCI em TODOS os campos
             const subId = String(getValueCI(d, ['id', 'ID', 'taskId']) || crypto.randomUUID());
             const subName = getValueCI(d, ['Demanda_Principal', 'demanda_principal', 'taskName', 'Nome_Tarefa']) || 'Sem descrição';
             const subResponsible = getValueCI(d, ['Responsavel_', 'responsavel_', 'responsible', 'Responsavel']) || 'Não atribuído';
@@ -131,7 +155,6 @@ const App: React.FC = () => {
             const subDmaic = getValueCI(d, ['DMAIC', 'dmaic']) as DMAICPhase || 'M - Mensurar';
             const subDeadline = getValueCI(d, ['Data_Prazo', 'data_prazo', 'deadline']);
 
-            // Mapear a Tarefa (SubActivity)
             activity.subActivities.push({
               id: subId,
               name: subName,
@@ -142,28 +165,16 @@ const App: React.FC = () => {
             });
           });
 
-          // Calcular progresso baseado nas demandas carregadas
+          // 4. Calcula progresso se não vier do banco
           const allTasks = Array.from(activitiesMap.values()).flatMap(a => a.subActivities);
           const completedTasks = allTasks.filter(t => t.status === 'Concluído').length;
-          const calculatedProgress = allTasks.length > 0 
-            ? Math.round((completedTasks / allTasks.length) * 100) 
-            : (getValueCI(item, ['progresso', 'progress']) || 0);
+          
+          if (allTasks.length > 0) {
+            project.progress = Math.round((completedTasks / allTasks.length) * 100);
+          }
 
-          return {
-            id: projectId,
-            title: getValueCI(item, ['Nome_do_Projeto', 'nome_do_projeto', 'title']) || 'Sem Título',
-            type: getValueCI(item, ['Tipo_do_Projeto', 'tipo_do_projeto', 'type']) || 'Geral',
-            startDate: getValueCI(item, ['Data_de_Inicio', 'data_de_inicio', 'startDate']) || new Date().toISOString(),
-            justification: getValueCI(item, ['Justificativa', 'justificativa']) || '',
-            objective: getValueCI(item, ['Objetivo', 'objetivo']) || '',
-            benefits: getValueCI(item, ['Beneficios_Esperados', 'beneficios_esperados', 'benefits']) || '',
-            description: getValueCI(item, ['Objetivo', 'objetivo', 'description']) || '', 
-            responsibleLead: getValueCI(item, ['Responsavel_Principal', 'responsavel_principal', 'responsibleLead']) || 'Não atribuído',
-            progress: calculatedProgress, 
-            status: getValueCI(item, ['status', 'Status']) || 'Ativo',
-            activities: Array.from(activitiesMap.values()),
-            recurrentDemands: [] 
-          };
+          project.activities = Array.from(activitiesMap.values());
+          return project;
         });
 
         setProjects(mappedProjects);
@@ -186,9 +197,8 @@ const App: React.FC = () => {
   };
 
   // Função para atualização completa (Visual + Webhook de Projeto)
-  // Usada quando editamos dados do PROJETO (Título, Objetivo, etc.)
   const handleUpdateProject = async (updatedProject: Project) => {
-    // 1. Otimistic Update (UI)
+    // 1. Optimistic Update (UI)
     setProjects(prevProjects => 
       prevProjects.map(p => p.id === updatedProject.id ? updatedProject : p)
     );
@@ -198,31 +208,23 @@ const App: React.FC = () => {
   };
 
   // Função SOMENTE para atualização LOCAL (Visual)
-  // Usada quando editamos DEMANDAS, pois o webhook de demandas é chamado separadamente
   const handleLocalUpdateProject = (updatedProject: Project) => {
     setProjects(prevProjects => 
       prevProjects.map(p => p.id === updatedProject.id ? updatedProject : p)
     );
   };
 
-  // Nova função para enviar dados ao Webhook de Demandas
+  // Enviar dados ao Webhook de Demandas (Cadastro_de_Demandas)
   const handleCreateDemand = async (demandData: any) => {
     try {
       if (N8N_WEBHOOK_DEMANDS_URL) {
         console.log("Enviando demanda para N8N:", demandData);
-        const response = await fetch(N8N_WEBHOOK_DEMANDS_URL, {
+        // Fire and forget
+        fetch(N8N_WEBHOOK_DEMANDS_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(demandData),
-        });
-
-        if (!response.ok) {
-          console.error(`Erro ao enviar demanda para N8N: ${response.statusText}`);
-        } else {
-          console.log("Demanda enviada com sucesso para N8N");
-        }
+        }).catch(err => console.error("Erro no envio assíncrono da demanda:", err));
       } else {
         console.warn("URL do Webhook de Demandas não configurada.");
       }
@@ -231,9 +233,11 @@ const App: React.FC = () => {
     }
   };
 
+  // Adicionar Projeto (Cadastro_de_Projetos)
   const handleAddProject = async (newProject: Project): Promise<boolean> => {
     try {
       if (N8N_WEBHOOK_URL) {
+        // O n8n espera chaves em inglês no body para mapear para as colunas em português
         const payload = {
           action: 'create',
           ...newProject
@@ -241,9 +245,7 @@ const App: React.FC = () => {
 
         const response = await fetch(N8N_WEBHOOK_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
 
@@ -263,9 +265,10 @@ const App: React.FC = () => {
     }
   };
 
+  // Editar Projeto (Cadastro_de_Projetos)
   const handleEditProject = async (updatedProject: Project): Promise<boolean> => {
     try {
-      // Se chamado diretamente (não via handleUpdateProject), atualiza estado local também
+      // Atualiza estado local
       setProjects(prevProjects => 
         prevProjects.map(p => p.id === updatedProject.id ? updatedProject : p)
       );
@@ -277,9 +280,7 @@ const App: React.FC = () => {
         };
         const response = await fetch(N8N_WEBHOOK_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
 
@@ -294,6 +295,7 @@ const App: React.FC = () => {
     }
   };
 
+  // Excluir Projeto
   const handleDeleteProject = async (projectId: string) => {
     const previousProjects = [...projects];
     setProjects(prev => prev.filter(p => p.id !== projectId));
@@ -306,9 +308,7 @@ const App: React.FC = () => {
         };
         const response = await fetch(N8N_WEBHOOK_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
 
@@ -369,7 +369,7 @@ const App: React.FC = () => {
             project={selectedProject} 
             onBack={handleBackToProjects}
             onUpdateProject={handleUpdateProject}
-            onLocalUpdateProject={handleLocalUpdateProject} // Passando a nova função
+            onLocalUpdateProject={handleLocalUpdateProject}
             onCreateDemand={handleCreateDemand}
           />
         )}

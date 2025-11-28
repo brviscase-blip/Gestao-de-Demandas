@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Project } from '../types';
-import { Plus, ChevronRight, BarChart2, X, Loader2, Trash2, Pencil, AlertTriangle, ChevronDown, FolderPlus, Calendar } from 'lucide-react';
+import { Plus, BarChart2, X, Loader2, Trash2, Pencil, AlertTriangle, ChevronDown, FolderPlus, Calendar } from 'lucide-react';
 
 interface ProjectListProps {
   projects: Project[];

@@ -29,19 +29,19 @@ export interface RecurrentDemand {
 }
 
 export interface Project {
-  id: string;
-  title: string;
-  type: string; // Novo campo: Tipo do Projeto
-  description: string; // Mantido para compatibilidade (será preenchido com o Objetivo)
-  justification?: string; // Novo campo: Justificativa
-  objective?: string; // Novo campo: Objetivo
-  benefits?: string; // Novo campo: Benefícios
+  id: string; // DB: ID_Supabase_Projetos (ou id)
+  title: string; // DB: Nome_do_Projeto
+  type: string; // DB: Tipo_do_Projeto
+  description: string; // Mapeado de Objetivo (Fallback)
+  justification?: string; // DB: Justificativa
+  objective?: string; // DB: Objetivo
+  benefits?: string; // DB: Beneficios
   progress: number; // 0-100
   status: 'Ativo' | 'Em Espera' | 'Concluído';
   activities: Activity[];
   recurrentDemands: RecurrentDemand[];
-  startDate: string;
-  responsibleLead: string;
+  startDate: string; // DB: Data_de_Inicio
+  responsibleLead: string; // DB: Responsavel
 }
 
 export interface DashboardStats {
