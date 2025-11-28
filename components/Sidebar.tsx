@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { LayoutDashboard, FolderKanban, Settings, LogOut, ChevronLeft, ChevronRight, Moon, Sun } from 'lucide-react';
+import { UserProfile } from '../types';
 
 interface SidebarProps {
   activeView: 'dashboard' | 'project-list' | 'project-detail';
@@ -9,9 +10,11 @@ interface SidebarProps {
   onToggle: () => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+  user: UserProfile | null;
+  onLogout: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeView, onChangeView, isOpen, onToggle, theme, toggleTheme }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeView, onChangeView, isOpen, onToggle, theme, toggleTheme, user, onLogout }) => {
   const getLinkClass = (viewName: string) => {
     const isActive = activeView === viewName || (viewName === 'project-list' && activeView === 'project-detail');
     return `flex items-center px-4 py-3 mb-2 rounded-lg transition-colors duration-200 ${
@@ -19,6 +22,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onChangeView, isOp
         ? 'bg-brand-600 text-white shadow-md' 
         : 'text-slate-400 hover:bg-slate-800 hover:text-white'
     } ${isOpen ? 'w-full' : 'justify-center'}`;
+  };
+
+  // Pega as iniciais do nome (ex: Rafael Rodrigues -> RR)
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
   };
 
   return (
@@ -67,7 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onChangeView, isOp
         )}
         {!isOpen && <div className="my-4 border-t border-slate-800 mx-2"></div>}
         
-        {/* THEME TOGGLE BUTTON (Antigo Sistema) */}
+        {/* THEME TOGGLE BUTTON */}
         <button 
           onClick={toggleTheme}
           className={`flex items-center px-4 py-3 mb-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors ${isOpen ? 'w-full' : 'justify-center'}`} 
@@ -85,15 +98,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onChangeView, isOp
       <div className="p-4 border-t border-slate-800">
         <div className={`flex items-center gap-3 px-2 py-2 ${isOpen ? '' : 'justify-center'}`}>
           <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-300 font-bold shrink-0">
-            RA
+            {user ? getInitials(user.No) : '?'}
           </div>
-          {isOpen && (
+          {isOpen && user && (
             <div className="flex-1 min-w-0 overflow-hidden animate-fade-in">
-              <p className="text-sm font-medium text-white truncate">Rafael (Analista)</p>
-              <p className="text-xs text-slate-500 truncate">Melhoria Contínua</p>
+              <p className="text-sm font-medium text-white truncate">{user.No}</p>
+              <p className="text-xs text-slate-500 truncate">{user.Tipo}</p>
             </div>
           )}
-          {isOpen && <LogOut size={16} className="text-slate-500 cursor-pointer hover:text-white shrink-0" />}
+          {isOpen && (
+            <button onClick={onLogout} title="Sair">
+              <LogOut size={16} className="text-slate-500 cursor-pointer hover:text-red-400 shrink-0 transition-colors" />
+            </button>
+          )}
         </div>
       </div>
     </div>

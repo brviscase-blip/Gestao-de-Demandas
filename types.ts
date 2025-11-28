@@ -2,6 +2,13 @@ export type DMAICPhase = 'D - Definir' | 'M - Mensurar' | 'A - Analisar' | 'I - 
 
 export type TaskStatus = 'Não Iniciado' | 'Em Andamento' | 'Concluído' | 'Bloqueado';
 
+export interface UserProfile {
+  id: number;
+  No: string; // Nome do Usuário
+  Se: string; // Senha
+  Tipo: string; // Cargo / Função
+}
+
 export interface SubActivity {
   id: string;
   name: string;

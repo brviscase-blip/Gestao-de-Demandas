@@ -1,19 +1,24 @@
-import React, { useState } from 'react';
-import { Project } from '../types';
-import { Plus, BarChart2, X, Loader2, Trash2, Pencil, AlertTriangle, ChevronDown, FolderPlus, Calendar } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Project, UserProfile } from '../types';
+import { Plus, BarChart2, X, Loader2, Trash2, Pencil, AlertTriangle, ChevronDown, FolderPlus, Calendar, Check } from 'lucide-react';
 
 interface ProjectListProps {
   projects: Project[];
+  profiles: UserProfile[]; // Lista de perfis do banco
   onSelectProject: (id: string) => void;
   onAddProject: (project: Project) => Promise<boolean>;
   onEditProject: (project: Project) => Promise<boolean>;
   onDeleteProject: (id: string) => void;
 }
 
-export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProject, onAddProject, onEditProject, onDeleteProject }) => {
+export const ProjectList: React.FC<ProjectListProps> = ({ projects, profiles, onSelectProject, onAddProject, onEditProject, onDeleteProject }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  
+  // States para Custom Dropdown
+  const [isResponsibleDropdownOpen, setIsResponsibleDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   
   // State para o Modal de Exclusão
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
@@ -30,6 +35,19 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
 
   const hasProjects = projects.length > 0;
 
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsResponsibleDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   // Função para abrir modal em modo CRIAÇÃO
   const handleOpenCreateModal = () => {
     setEditingProject(null);
@@ -42,6 +60,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
       objective: '',
       benefits: ''
     });
+    setIsResponsibleDropdownOpen(false);
     setIsModalOpen(true);
   };
 
@@ -58,6 +77,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
       objective: project.objective || '',
       benefits: project.benefits || ''
     });
+    setIsResponsibleDropdownOpen(false);
     setIsModalOpen(true);
   };
 
@@ -126,7 +146,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
     }
   };
 
-  // Estilos atualizados para maior conforto visual e compactação
+  // Estilos atualizados
   const inputClass = "w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all shadow-sm font-medium text-sm";
   const labelClass = "block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide";
 
@@ -361,19 +381,45 @@ export const ProjectList: React.FC<ProjectListProps> = ({ projects, onSelectProj
                   </div>
                 </div>
 
-                {/* Responsável */}
-                <div className="md:col-span-1">
-                  <label htmlFor="responsibleLead" className={labelClass}>Responsável Principal</label>
-                  <input 
-                    type="text" 
-                    id="responsibleLead"
-                    name="responsibleLead"
-                    value={formData.responsibleLead}
-                    onChange={handleChange}
-                    placeholder="Ex: Rafael"
-                    className={inputClass}
-                    disabled={isSubmitting}
-                  />
+                {/* Responsável (CUSTOM DROPDOWN) */}
+                <div className="md:col-span-1" ref={dropdownRef}>
+                  <label className={labelClass}>Responsável Principal</label>
+                  <div className="relative">
+                    <button
+                        type="button"
+                        className={`${inputClass} text-left flex justify-between items-center`}
+                        onClick={() => setIsResponsibleDropdownOpen(!isResponsibleDropdownOpen)}
+                        disabled={isSubmitting}
+                    >
+                        <span className={!formData.responsibleLead ? 'text-slate-400' : ''}>
+                            {formData.responsibleLead || 'Selecione'}
+                        </span>
+                        <ChevronDown size={16} className="text-slate-400" />
+                    </button>
+
+                    {isResponsibleDropdownOpen && (
+                        <div className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto custom-scrollbar">
+                            {profiles.map(profile => (
+                                <div 
+                                    key={profile.id}
+                                    className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-600 cursor-pointer border-b border-slate-100 dark:border-slate-600 last:border-0"
+                                    onClick={() => {
+                                        setFormData(prev => ({ ...prev, responsibleLead: profile.No }));
+                                        setIsResponsibleDropdownOpen(false);
+                                    }}
+                                >
+                                    <div className="font-bold text-slate-800 dark:text-white text-sm">{profile.No}</div>
+                                    <div className="text-xs text-slate-500 dark:text-slate-400">{profile.Tipo}</div>
+                                </div>
+                            ))}
+                            {profiles.length === 0 && (
+                                <div className="px-4 py-3 text-sm text-slate-400 italic text-center">
+                                    Nenhum perfil encontrado.
+                                </div>
+                            )}
+                        </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Data de Início */}
