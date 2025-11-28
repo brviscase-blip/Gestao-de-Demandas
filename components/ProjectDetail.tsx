@@ -24,9 +24,13 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
   const [targetActivity, setTargetActivity] = useState<{id: string, name: string} | null>(null);
   // editingTask serve para saber se estamos EDITANDO uma tarefa específica
   const [editingTask, setEditingTask] = useState<{id: string} | null>(null);
+  // isEditingActivity serve para saber se estamos EDITANDO O GRUPO (Demanda Principal)
+  const [isEditingActivity, setIsEditingActivity] = useState(false);
 
-  // Delete Confirmation State
+  // Delete Confirmation State (Task)
   const [taskToDelete, setTaskToDelete] = useState<{activityId: string, taskId: string, activityName: string, taskName: string} | null>(null);
+  // Delete Confirmation State (Activity/Group)
+  const [activityToDelete, setActivityToDelete] = useState<{id: string, name: string} | null>(null);
   
   const [formData, setFormData] = useState({
     activityName: '',
@@ -73,7 +77,25 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
   const handleOpenNewActivity = () => {
     setTargetActivity(null);
     setEditingTask(null);
+    setIsEditingActivity(false);
     setFormData({ activityName: '', taskName: '', responsible: 'Rafael', dmaic: 'M - Mensurar', status: 'Não Iniciado', deadline: '' });
+    setIsModalOpen(true);
+  };
+
+  // 1.5 Abrir Modal para EDITAR DEMANDA PRINCIPAL (Grupo)
+  const handleOpenEditActivity = (e: React.MouseEvent, activityId: string, activityName: string) => {
+    e.stopPropagation();
+    setTargetActivity({ id: activityId, name: activityName });
+    setEditingTask(null);
+    setIsEditingActivity(true);
+    setFormData({
+        activityName: activityName,
+        taskName: '',
+        responsible: '',
+        dmaic: 'M - Mensurar',
+        status: 'Não Iniciado',
+        deadline: ''
+    });
     setIsModalOpen(true);
   };
 
@@ -82,6 +104,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
     setExpandedActivities(prev => ({ ...prev, [activityId]: true }));
     setTargetActivity({ id: activityId, name: activityName });
     setEditingTask(null);
+    setIsEditingActivity(false);
     setFormData({ activityName: activityName, taskName: '', responsible: 'Rafael', dmaic: 'I - Implementar', status: 'Não Iniciado', deadline: '' });
     setIsModalOpen(true);
   };
@@ -90,6 +113,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
   const handleOpenEditTask = (activityId: string, activityName: string, task: SubActivity) => {
     setTargetActivity({ id: activityId, name: activityName });
     setEditingTask({ id: task.id });
+    setIsEditingActivity(false);
     setFormData({
         activityName: activityName,
         taskName: task.name,
@@ -105,8 +129,31 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
   const handleSaveTask = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // CENÁRIO 0: EDIÇÃO DE GRUPO (DEMANDA PRINCIPAL)
+    if (isEditingActivity && targetActivity) {
+        const updatedActivities = project.activities.map(act => {
+            if (act.id !== targetActivity.id) return act;
+            return { ...act, name: formData.activityName };
+        });
+
+        // 1. Optimistic Update
+        onLocalUpdateProject({ ...project, activities: updatedActivities });
+        setIsModalOpen(false);
+
+        // 2. Webhook
+        if (onCreateDemand) {
+             const payload = {
+                type: 'update_demand_group',
+                projectId: project.id,
+                projectTitle: project.title,
+                activityGroupId: targetActivity.id,
+                activityGroupName: formData.activityName
+            };
+            onCreateDemand(payload).catch(err => console.error("Erro ao atualizar grupo:", err));
+        }
+    }
     // CENÁRIO A: EDIÇÃO DE TAREFA EXISTENTE
-    if (editingTask && targetActivity) {
+    else if (editingTask && targetActivity) {
         const updatedActivities = project.activities.map(act => {
             if (act.id !== targetActivity.id) return act;
             return {
@@ -232,7 +279,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
   // DELETE HANDLERS
   // ==========================================================
 
-  const handleClickDelete = (e: React.MouseEvent, activityId: string, taskId: string, activityName: string, taskName: string) => {
+  const handleClickDeleteTask = (e: React.MouseEvent, activityId: string, taskId: string, activityName: string, taskName: string) => {
     e.stopPropagation();
     setTaskToDelete({ activityId, taskId, activityName, taskName });
   };
@@ -260,8 +307,6 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
 
     // 2. Envio para o Webhook (N8N)
     if (onCreateDemand) {
-        // setTimeout(0) joga a execução para o final da fila de eventos,
-        // garantindo que a UI atualize primeiro e o fetch não seja bloqueado por re-renders.
         setTimeout(() => {
             const payload = {
                 type: 'delete_task', 
@@ -273,6 +318,41 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                 taskName: taskName
             };
             onCreateDemand(payload).catch(err => console.error("Erro ao excluir tarefa:", err));
+        }, 0);
+    }
+  };
+
+  const handleClickDeleteActivity = (e: React.MouseEvent, activityId: string, activityName: string) => {
+    e.stopPropagation();
+    setActivityToDelete({ id: activityId, name: activityName });
+  };
+
+  const confirmDeleteActivity = async () => {
+    if (!activityToDelete) return;
+    const { id: activityId, name: activityName } = activityToDelete;
+
+    // 1. Atualização Local
+    const updatedActivities = project.activities.filter(a => a.id !== activityId);
+    
+    onLocalUpdateProject({ 
+        ...project, 
+        activities: updatedActivities,
+        progress: calculateProgress(updatedActivities)
+    });
+
+    setActivityToDelete(null);
+
+    // 2. Webhook
+    if (onCreateDemand) {
+        setTimeout(() => {
+            const payload = {
+                type: 'delete_demand_group',
+                projectId: project.id,
+                projectTitle: project.title,
+                activityGroupId: activityId,
+                activityGroupName: activityName
+            };
+            onCreateDemand(payload).catch(err => console.error("Erro ao excluir grupo:", err));
         }, 0);
     }
   };
@@ -470,12 +550,31 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                                {activity.subActivities.length} tarefas
                             </span>
                          </div>
-                         <button 
-                            onClick={(e) => { e.stopPropagation(); handleOpenNewTask(activity.id, activity.name); }}
-                            className="text-xs flex items-center gap-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 font-bold px-3 py-1.5 rounded-lg transition-all"
-                         >
-                            <Plus size={14} /> Adicionar Tarefa
-                         </button>
+
+                         {/* ACTION BUTTONS (ADD, EDIT GROUP, DELETE GROUP) */}
+                         <div className="flex items-center gap-2">
+                            <button 
+                                onClick={(e) => handleOpenEditActivity(e, activity.id, activity.name)}
+                                className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-all"
+                                title="Editar Nome da Demanda"
+                            >
+                                <Pencil size={14} />
+                            </button>
+                            <button 
+                                onClick={(e) => handleClickDeleteActivity(e, activity.id, activity.name)}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-all"
+                                title="Excluir Demanda"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                            <div className="h-4 w-px bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); handleOpenNewTask(activity.id, activity.name); }}
+                                className="text-xs flex items-center gap-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 font-bold px-3 py-1.5 rounded-lg transition-all"
+                            >
+                                <Plus size={14} /> Adicionar Tarefa
+                            </button>
+                         </div>
                        </div>
 
                        {isExpanded && (
@@ -538,7 +637,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                                      <td className="px-4 py-3 text-center">
                                          <div className="flex items-center justify-center gap-1">
                                             <button 
-                                                onClick={(e) => handleClickDelete(e, activity.id, sub.id, activity.name, sub.name)}
+                                                onClick={(e) => handleClickDeleteTask(e, activity.id, sub.id, activity.name, sub.name)}
                                                 className="p-2 text-slate-400 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg transition-all"
                                                 title="Excluir Tarefa"
                                             >
@@ -590,9 +689,9 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
               return (
                 <div key={status} className="flex-shrink-0 w-80 flex flex-col h-full rounded-2xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 shadow-sm">
                   <div className={`p-4 border-b border-slate-200 dark:border-slate-700 font-bold text-sm flex justify-between items-center rounded-t-2xl
-                    ${status === 'Concluído' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : ''}
-                    ${status === 'Bloqueado' ? 'text-red-700 bg-red-50 border-red-200' : ''}
-                    ${status === 'Em Andamento' ? 'text-blue-700 bg-blue-50 border-blue-200' : ''}
+                    ${status === 'Concluído' ? 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800' : ''}
+                    ${status === 'Bloqueado' ? 'text-red-700 bg-red-50 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800' : ''}
+                    ${status === 'Em Andamento' ? 'text-blue-700 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800' : ''}
                     ${status === 'Não Iniciado' ? 'text-slate-700 bg-slate-200 dark:bg-slate-700 dark:text-slate-200' : ''}
                   `}>
                     {status}
@@ -610,7 +709,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                             <button 
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    if (parentActivity) handleClickDelete(e, parentActivity.id, task.id, parentActivity.name, task.name);
+                                    if (parentActivity) handleClickDeleteTask(e, parentActivity.id, task.id, parentActivity.name, task.name);
                                 }}
                                 className="p-1.5 text-slate-300 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-full transition-colors"
                                 title="Excluir"
@@ -739,12 +838,18 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
             <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 rounded-t-2xl">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-                  {editingTask ? 'Editar Tarefa' : (targetActivity ? 'Nova Tarefa' : 'Nova Demanda Principal')}
+                  {isEditingActivity 
+                    ? 'Editar Demanda Principal'
+                    : (editingTask ? 'Editar Tarefa' : (targetActivity ? 'Nova Tarefa' : 'Nova Demanda Principal'))
+                  }
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                  {targetActivity 
-                    ? <span>{editingTask ? 'Editando em' : 'Adicionando à'}: <strong className="text-brand-600">{targetActivity.name}</strong></span> 
-                    : 'Crie um agrupamento de tarefas para organizar o projeto.'}
+                  {isEditingActivity
+                    ? 'Alterar o nome do grupo de atividades.'
+                    : (targetActivity 
+                        ? <span>{editingTask ? 'Editando em' : 'Adicionando à'}: <strong className="text-brand-600">{targetActivity.name}</strong></span> 
+                        : 'Crie um agrupamento de tarefas para organizar o projeto.')
+                  }
                 </p>
               </div>
               <button 
@@ -756,14 +861,16 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
             </div>
             
             <form onSubmit={handleSaveTask} className="p-8 space-y-6">
-              {!targetActivity && (
+              
+              {/* Campo Nome da Demanda (Activity Group) */}
+              {(!targetActivity || isEditingActivity) && (
                 <div>
                   <label htmlFor="activityName" className={labelClass}>Nome da Demanda (Agrupador) <span className="text-brand-500">*</span></label>
                   <input 
                     type="text" 
                     id="activityName"
                     name="activityName"
-                    required={!targetActivity}
+                    required
                     value={formData.activityName}
                     onChange={handleChange}
                     placeholder="Ex: Mapeamento de Processos"
@@ -774,101 +881,104 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                 </div>
               )}
 
-              <div className={targetActivity ? "pt-4 border-t border-slate-100 dark:border-slate-700" : ""}>
-                 {targetActivity && (
-                    <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
-                       <div className="w-1.5 h-1.5 rounded-full bg-brand-500"></div>
-                       Detalhes da Tarefa
-                    </h3>
-                 )}
+              {/* Campos da Tarefa (Só aparecem se NÃO estivermos editando apenas o nome do grupo) */}
+              {!isEditingActivity && (
+                <div className={targetActivity ? "pt-4 border-t border-slate-100 dark:border-slate-700" : ""}>
+                   {targetActivity && (
+                      <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+                         <div className="w-1.5 h-1.5 rounded-full bg-brand-500"></div>
+                         Detalhes da Tarefa
+                      </h3>
+                   )}
 
-                <div className="space-y-6">
-                  <div>
-                    <label htmlFor="taskName" className={labelClass}>
-                       {targetActivity ? "O que deve ser feito? (Tarefa)" : "Descrição da Demanda / O que deve ser feito?"} <span className="text-brand-500">*</span>
-                    </label>
-                    <input 
-                      type="text" 
-                      id="taskName"
-                      name="taskName"
-                      required
-                      value={formData.taskName}
-                      onChange={handleChange}
-                      placeholder={targetActivity ? "Ex: Realizar entrevistas..." : "Ex: Realizar entrevistas com operadores do turno A"}
-                      className={inputClass}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-6">
                     <div>
-                      <label htmlFor="responsible" className={labelClass}>Responsável</label>
+                      <label htmlFor="taskName" className={labelClass}>
+                         {targetActivity ? "O que deve ser feito? (Tarefa)" : "Descrição da Demanda / O que deve ser feito?"} <span className="text-brand-500">*</span>
+                      </label>
                       <input 
                         type="text" 
-                        id="responsible"
-                        name="responsible"
-                        value={formData.responsible}
+                        id="taskName"
+                        name="taskName"
+                        required
+                        value={formData.taskName}
                         onChange={handleChange}
+                        placeholder={targetActivity ? "Ex: Realizar entrevistas..." : "Ex: Realizar entrevistas com operadores do turno A"}
                         className={inputClass}
                       />
                     </div>
-                    <div>
-                      <label htmlFor="deadline" className={labelClass}>Prazo (Data) <span className="text-brand-500">*</span></label>
-                      <div className="relative">
-                        <input 
-                            type="date" 
-                            id="deadline"
-                            name="deadline"
-                            required
-                            value={formData.deadline}
-                            onChange={handleChange}
-                            className={`${inputClass} dark:[color-scheme:dark] cursor-pointer`}
-                        />
-                        <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="dmaic" className={labelClass}>Fase do DMAIC</label>
-                      <div className="relative">
-                        <select 
-                          id="dmaic"
-                          name="dmaic"
-                          value={formData.dmaic}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label htmlFor="responsible" className={labelClass}>Responsável</label>
+                        <input 
+                          type="text" 
+                          id="responsible"
+                          name="responsible"
+                          value={formData.responsible}
                           onChange={handleChange}
-                          className={`${inputClass} appearance-none cursor-pointer`}
-                        >
-                          <option value="D - Definir">D - Definir</option>
-                          <option value="M - Mensurar">M - Mensurar</option>
-                          <option value="A - Analisar">A - Analisar</option>
-                          <option value="I - Implementar">I - Implementar</option>
-                          <option value="C - Controlar">C - Controlar</option>
-                        </select>
-                        <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="deadline" className={labelClass}>Prazo (Data) <span className="text-brand-500">*</span></label>
+                        <div className="relative">
+                          <input 
+                              type="date" 
+                              id="deadline"
+                              name="deadline"
+                              required
+                              value={formData.deadline}
+                              onChange={handleChange}
+                              className={`${inputClass} dark:[color-scheme:dark] cursor-pointer`}
+                          />
+                          <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <label htmlFor="status" className={labelClass}>Status Inicial</label>
-                      <div className="relative">
-                        <select 
-                          id="status"
-                          name="status"
-                          value={formData.status}
-                          onChange={handleChange}
-                          className={`${inputClass} appearance-none cursor-pointer`}
-                        >
-                          <option value="Não Iniciado">Não Iniciado</option>
-                          <option value="Em Andamento">Em Andamento</option>
-                          <option value="Bloqueado">Bloqueado</option>
-                          <option value="Concluído">Concluído</option>
-                        </select>
-                        <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label htmlFor="dmaic" className={labelClass}>Fase do DMAIC</label>
+                        <div className="relative">
+                          <select 
+                            id="dmaic"
+                            name="dmaic"
+                            value={formData.dmaic}
+                            onChange={handleChange}
+                            className={`${inputClass} appearance-none cursor-pointer`}
+                          >
+                            <option value="D - Definir">D - Definir</option>
+                            <option value="M - Mensurar">M - Mensurar</option>
+                            <option value="A - Analisar">A - Analisar</option>
+                            <option value="I - Implementar">I - Implementar</option>
+                            <option value="C - Controlar">C - Controlar</option>
+                          </select>
+                          <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        </div>
+                      </div>
+                      <div>
+                        <label htmlFor="status" className={labelClass}>Status Inicial</label>
+                        <div className="relative">
+                          <select 
+                            id="status"
+                            name="status"
+                            value={formData.status}
+                            onChange={handleChange}
+                            className={`${inputClass} appearance-none cursor-pointer`}
+                          >
+                            <option value="Não Iniciado">Não Iniciado</option>
+                            <option value="Em Andamento">Em Andamento</option>
+                            <option value="Bloqueado">Bloqueado</option>
+                            <option value="Concluído">Concluído</option>
+                          </select>
+                          <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className="pt-6 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-700">
                 <button 
@@ -883,7 +993,10 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                   className="px-8 py-3 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl transition-colors shadow-lg shadow-brand-200 dark:shadow-none flex items-center"
                 >
                   <Save size={18} className="mr-2" />
-                  {editingTask ? 'Salvar Alterações' : 'Salvar'}
+                  {isEditingActivity 
+                    ? 'Atualizar Demanda'
+                    : (editingTask ? 'Salvar Alterações' : 'Salvar')
+                  }
                 </button>
               </div>
             </form>
@@ -891,7 +1004,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
         </div>
       )}
 
-      {/* CONFIRM DELETE MODAL */}
+      {/* CONFIRM DELETE MODAL (TASK) */}
       {taskToDelete && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in duration-200">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
@@ -914,6 +1027,35 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
                 className="px-5 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-200 dark:shadow-none"
               >
                 Sim, excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM DELETE MODAL (ACTIVITY GROUP) */}
+      {activityToDelete && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in duration-200">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-400">
+              <AlertTriangle size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Excluir Demanda Principal?</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+              Isso excluirá a demanda principal <strong className="text-slate-800 dark:text-white">"{activityToDelete.name}"</strong> e todas as tarefas vinculadas a ela. A ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => setActivityToDelete(null)}
+                className="px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDeleteActivity}
+                className="px-5 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-200 dark:shadow-none"
+              >
+                Sim, excluir tudo
               </button>
             </div>
           </div>
