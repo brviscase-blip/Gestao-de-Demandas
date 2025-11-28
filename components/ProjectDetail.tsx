@@ -260,16 +260,20 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onBack, o
 
     // 2. Envio para o Webhook (N8N)
     if (onCreateDemand) {
-        const payload = {
-            type: 'delete_task', 
-            projectId: project.id,
-            projectTitle: project.title,
-            activityGroupId: activityId,
-            activityGroupName: activityName,
-            taskId: taskId,
-            taskName: taskName
-        };
-        onCreateDemand(payload).catch(err => console.error("Erro ao excluir tarefa:", err));
+        // setTimeout(0) joga a execução para o final da fila de eventos,
+        // garantindo que a UI atualize primeiro e o fetch não seja bloqueado por re-renders.
+        setTimeout(() => {
+            const payload = {
+                type: 'delete_task', 
+                projectId: project.id,
+                projectTitle: project.title,
+                activityGroupId: activityId,
+                activityGroupName: activityName,
+                taskId: taskId,
+                taskName: taskName
+            };
+            onCreateDemand(payload).catch(err => console.error("Erro ao excluir tarefa:", err));
+        }, 0);
     }
   };
 

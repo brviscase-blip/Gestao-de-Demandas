@@ -221,11 +221,12 @@ const App: React.FC = () => {
     try {
       if (N8N_WEBHOOK_DEMANDS_URL) {
         console.log("Enviando demanda para N8N:", demandData);
-        // Fire and forget
+        // Fire and forget com keepalive: true para garantir envio em background sem bloqueios
         fetch(N8N_WEBHOOK_DEMANDS_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(demandData),
+          keepalive: true, // Garante que a requisição continue mesmo se o componente desmontar ou a thread estiver ocupada
         }).catch(err => console.error("Erro no envio assíncrono da demanda:", err));
       } else {
         console.warn("URL do Webhook de Demandas não configurada.");
